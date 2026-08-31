@@ -1,0 +1,382 @@
+:root {
+  color-scheme: dark;
+  --bg: #071014;
+  --panel: rgba(15, 27, 32, 0.86);
+  --panel-strong: rgba(20, 39, 46, 0.94);
+  --line: rgba(119, 179, 191, 0.22);
+  --text: #eef7f8;
+  --muted: #91aeb6;
+  --cyan: #35d5e6;
+  --green: #64e08a;
+  --amber: #ffc35a;
+  --red: #ff6b6b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+  color: var(--text);
+  background:
+    linear-gradient(rgba(7, 16, 20, 0.84), rgba(7, 16, 20, 0.94)),
+    url("https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=2200&q=80")
+      center/cover fixed;
+}
+
+.screen {
+  min-height: 100vh;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(53, 213, 230, 0.14), transparent 34%),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: auto, 64px 64px, 64px 64px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  padding-bottom: 22px;
+}
+
+.eyebrow {
+  color: var(--cyan);
+  font-size: 13px;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 8px 0 0;
+  font-size: clamp(30px, 4vw, 58px);
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+p {
+  margin: 7px 0 0;
+  color: var(--muted);
+}
+
+.status-block,
+.metric,
+.panel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(12px);
+}
+
+.status-block {
+  min-width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 18px;
+  border-radius: 8px;
+}
+
+.status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 24px var(--amber);
+}
+
+.status-dot.ok {
+  background: var(--green);
+  box-shadow: 0 0 24px var(--green);
+}
+
+.status-dot.error {
+  background: var(--red);
+  box-shadow: 0 0 24px var(--red);
+}
+
+.status-title {
+  font-weight: 800;
+}
+
+.status-subtitle,
+.metric-foot {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sensor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sensor-card {
+  min-height: 220px;
+}
+
+.sensor-card-alt {
+  background: linear-gradient(135deg, rgba(73, 54, 21, 0.92), rgba(17, 28, 33, 0.92));
+}
+
+.sensor-card.offline {
+  opacity: 0.72;
+}
+
+.sensor-kv {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 18px 0 0;
+}
+
+.sensor-kv div {
+  border-left: 2px solid rgba(119, 179, 191, 0.42);
+  padding-left: 12px;
+}
+
+.sensor-kv dt,
+.sensor-kv dd {
+  margin: 0;
+}
+
+.sensor-kv dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sensor-kv dd {
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.slave-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.slave-status-card {
+  grid-template-columns: 1fr;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(119, 179, 191, 0.16);
+  border-radius: 8px;
+  background: rgba(4, 14, 18, 0.34);
+}
+
+.slave-status-title {
+  grid-column: 1 / -1;
+  color: var(--cyan);
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.compact-kv {
+  grid-template-columns: 1fr;
+}
+
+.metric {
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 142px;
+}
+
+.metric.primary {
+  background: linear-gradient(135deg, rgba(21, 66, 73, 0.96), rgba(17, 28, 33, 0.92));
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.temperature {
+  margin-top: 8px;
+  font-size: clamp(48px, 7vw, 88px);
+  font-weight: 900;
+  line-height: 0.95;
+}
+
+.temperature small {
+  font-size: 30px;
+  color: var(--cyan);
+}
+
+.metric-value {
+  margin-top: 18px;
+  font-size: clamp(24px, 2.4vw, 38px);
+  font-weight: 850;
+}
+
+.panel {
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.chart-panel {
+  min-height: 520px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+select {
+  min-width: 260px;
+  border: 1px solid rgba(53, 213, 230, 0.32);
+  color: var(--text);
+  background: rgba(10, 24, 29, 0.92);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font: inherit;
+  outline: none;
+}
+
+select:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(53, 213, 230, 0.12);
+}
+
+button {
+  border: 1px solid rgba(53, 213, 230, 0.32);
+  color: var(--text);
+  background: rgba(10, 24, 29, 0.82);
+  border-radius: 6px;
+  padding: 10px 13px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.active,
+button:hover {
+  background: rgba(53, 213, 230, 0.2);
+  border-color: var(--cyan);
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.secondary-button {
+  padding: 8px 11px;
+  font-size: 14px;
+}
+
+.panel-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.serial-picker {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid rgba(119, 179, 191, 0.16);
+  border-radius: 8px;
+  background: rgba(4, 14, 18, 0.34);
+}
+
+.serial-picker label {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+#temperatureChart {
+  width: 100%;
+  height: 430px;
+  display: block;
+}
+
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 16px 0 0;
+}
+
+.kv div {
+  border-left: 2px solid var(--cyan);
+  padding-left: 12px;
+}
+
+dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+dd {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.notice {
+  margin-top: 16px;
+  color: #cfe6e9;
+  line-height: 1.7;
+}
+
+@media (max-width: 980px) {
+  .topbar,
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .metrics,
+  .sensor-grid,
+  .bottom-grid,
+  .kv,
+  .serial-picker,
+  .slave-status-grid {
+    grid-template-columns: 1fr;
+  }
+}

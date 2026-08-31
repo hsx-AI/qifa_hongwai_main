@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>汽发转轴加工温度在线监测</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="screen">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">QIFA ROTOR THERMAL MONITOR</div>
+          <h1>汽发转轴加工温度在线监测</h1>
+        </div>
+        <div class="status-block">
+          <div class="status-dot" id="statusDot"></div>
+          <div>
+            <div class="status-title" id="collectorState">连接中</div>
+            <div class="status-subtitle" id="collectorMeta">等待主站数据</div>
+          </div>
+        </div>
+      </header>
+
+      <section class="sensor-grid" id="sensorCards">
+        <article class="metric primary sensor-card" data-sensor-id="1">
+          <div class="metric-label">从站 1 · 加工温度</div>
+          <div class="temperature"><span class="sensor-temp">--.-</span><small>°C</small></div>
+          <div class="metric-foot sensor-time">等待数据</div>
+          <dl class="sensor-kv">
+            <div><dt>状态</dt><dd class="sensor-status">--</dd></div>
+            <div><dt>室温 / 湿度</dt><dd class="sensor-ambient">--.- °C / --.-%</dd></div>
+            <div><dt>窗口均值</dt><dd class="sensor-avg">--.- °C</dd></div>
+            <div><dt>MAC</dt><dd class="sensor-mac">--</dd></div>
+          </dl>
+        </article>
+        <article class="metric primary sensor-card sensor-card-alt" data-sensor-id="2">
+          <div class="metric-label">从站 2 · 加工温度</div>
+          <div class="temperature"><span class="sensor-temp">--.-</span><small>°C</small></div>
+          <div class="metric-foot sensor-time">等待数据</div>
+          <dl class="sensor-kv">
+            <div><dt>状态</dt><dd class="sensor-status">--</dd></div>
+            <div><dt>室温 / 湿度</dt><dd class="sensor-ambient">--.- °C / --.-%</dd></div>
+            <div><dt>窗口均值</dt><dd class="sensor-avg">--.- °C</dd></div>
+            <div><dt>MAC</dt><dd class="sensor-mac">--</dd></div>
+          </dl>
+        </article>
+      </section>
+
+      <section class="metrics">
+        <article class="metric">
+          <div class="metric-label">双站最高 / 最低</div>
+          <div class="metric-value" id="rangeTemp">--.- / --.- °C</div>
+          <div class="metric-foot" id="sampleCount">0 个采样点</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">从站 1 采样</div>
+          <div class="metric-value" id="sensor1Count">0 点</div>
+          <div class="metric-foot" id="sensor1Range">最高 --.- / 最低 --.- °C</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">从站 2 采样</div>
+          <div class="metric-value" id="sensor2Count">0 点</div>
+          <div class="metric-foot" id="sensor2Range">最高 --.- / 最低 --.- °C</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">采集总览</div>
+          <div class="metric-value" id="storedCount">--</div>
+          <div class="metric-foot">接收 <span id="receivedCount">--</span> 包</div>
+        </article>
+      </section>
+
+      <section class="panel chart-panel">
+        <div class="panel-head">
+          <div>
+            <h2>双从站温度趋势</h2>
+            <p>青色为从站 1，琥珀色为从站 2，按时间窗口滚动显示</p>
+          </div>
+          <div class="controls" aria-label="时间窗口">
+            <button data-window="600">10分钟</button>
+            <button data-window="1800">30分钟</button>
+            <button data-window="3600" class="active">1小时</button>
+            <button data-window="14400">4小时</button>
+            <button data-window="86400">24小时</button>
+          </div>
+        </div>
+        <canvas id="temperatureChart" width="1600" height="620"></canvas>
+      </section>
+
+      <section class="bottom-grid">
+        <article class="panel">
+          <div class="panel-title-row">
+            <h2>数据采集</h2>
+            <button class="secondary-button" id="refreshPortsButton">刷新串口</button>
+          </div>
+          <div class="serial-picker">
+            <label for="serialSelect">主站串口</label>
+            <select id="serialSelect"></select>
+            <button id="applySerialButton">应用串口</button>
+          </div>
+          <dl class="kv">
+            <div><dt>当前串口</dt><dd id="serialPort">--</dd></div>
+            <div><dt>波特率</dt><dd id="serialBaud">--</dd></div>
+            <div><dt>入库数量</dt><dd id="storedCountPanel">--</dd></div>
+            <div><dt>接收包数</dt><dd id="receivedCountPanel">--</dd></div>
+          </dl>
+        </article>
+        <article class="panel">
+          <h2>运行提示</h2>
+          <div class="notice" id="noticeText">系统正在等待实时数据。</div>
+          <div class="slave-status-grid">
+            <dl class="kv compact-kv slave-status-card">
+              <div class="slave-status-title">从站 1</div>
+              <div><dt>状态</dt><dd id="sensor1Status">--</dd></div>
+              <div><dt>MAC</dt><dd id="sensor1Mac">--</dd></div>
+            </dl>
+            <dl class="kv compact-kv slave-status-card">
+              <div class="slave-status-title">从站 2</div>
+              <div><dt>状态</dt><dd id="sensor2Status">--</dd></div>
+              <div><dt>MAC</dt><dd id="sensor2Mac">--</dd></div>
+            </dl>
+          </div>
+        </article>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
