@@ -1,4 +1,6 @@
 import argparse
+import csv
+import io
 import json
 import math
 import os
@@ -9,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import serial
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 from serial.tools import list_ports
 
 
@@ -110,6 +112,37 @@ def init_db():
         ensure_column(conn, "readings", "ambient_temperature_c", "REAL")
         ensure_column(conn, "readings", "ambient_humidity_percent", "REAL")
         ensure_column(conn, "readings", "ambient_status", "TEXT")
+        ensure_column(conn, "readings", "raw_temperature_c", "REAL")
+        conn.execute(
+            "UPDATE readings SET raw_temperature_c = temperature_c WHERE raw_temperature_c IS NULL"
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sensor_configs (
+              sensor_id INTEGER PRIMARY KEY,
+              name TEXT NOT NULL,
+              calibration_scale REAL NOT NULL DEFAULT 1.0,
+              calibration_offset REAL NOT NULL DEFAULT 0.0
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS app_config (
+              key TEXT PRIMARY KEY,
+              value TEXT NOT NULL
+            )
+            """
+        )
+        for sensor_id in SENSOR_IDS:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO sensor_configs
+                  (sensor_id, name, calibration_scale, calibration_offset)
+                VALUES (?, ?, 1.0, 0.0)
+                """,
+                (sensor_id, f"测量点 {sensor_id}"),
+            )
         conn.execute("DROP INDEX IF EXISTS idx_readings_unique_sample")
         conn.execute(
             """
@@ -118,6 +151,41 @@ def init_db():
             """
         )
         migrate_utc_rows_to_local_time(conn)
+
+
+def get_sensor_configs(conn=None):
+    owns_connection = conn is None
+    if owns_connection:
+        conn = connect_db()
+    try:
+        rows = conn.execute(
+            """
+            SELECT sensor_id, name, calibration_scale, calibration_offset
+            FROM sensor_configs
+            ORDER BY sensor_id
+            """
+        ).fetchall()
+        return {row["sensor_id"]: dict(row) for row in rows}
+    finally:
+        if owns_connection:
+            conn.close()
+
+
+def get_app_config(key, default=None):
+    with connect_db() as conn:
+        row = conn.execute("SELECT value FROM app_config WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_app_config(key, value):
+    with connect_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO app_config(key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (key, str(value)),
+        )
 
 
 def update_state(**kwargs):
@@ -175,7 +243,7 @@ def choose_serial_port(configured_port):
 def latest_reading_for_sensor(conn, sensor_id):
     row = conn.execute(
         """
-        SELECT ts, sensor_id, peer_mac, sequence, temperature_c,
+        SELECT ts, sensor_id, peer_mac, sequence, raw_temperature_c, temperature_c,
                ambient_temperature_c, ambient_humidity_percent, ambient_status,
                status, ok_count, error_count
         FROM readings
@@ -241,6 +309,13 @@ def store_sensor_packet(packet):
 
     peer_mac = str(packet.get("mac") or packet.get("peer") or "unknown")
     sensor_id = int(packet.get("sensor_id", 0))
+    if sensor_id not in SENSOR_IDS:
+        update_state(last_store_error=f"Unsupported sensor_id: {sensor_id}")
+        return False
+    sensor_config = get_sensor_configs().get(sensor_id, {})
+    scale = float(sensor_config.get("calibration_scale", 1.0))
+    offset = float(sensor_config.get("calibration_offset", 0.0))
+    calibrated_temperature = temperature * scale + offset
     sequence = int(packet.get("sequence", 0))
     status = str(packet.get("status", "Unknown"))
     ambient_status = str(packet.get("ambient_status", "Unknown"))
@@ -251,10 +326,10 @@ def store_sensor_packet(packet):
         conn.execute(
             """
             INSERT INTO readings
-              (ts, sensor_id, peer_mac, sequence, temperature_c, status,
+              (ts, sensor_id, peer_mac, sequence, raw_temperature_c, temperature_c, status,
                ambient_temperature_c, ambient_humidity_percent, ambient_status,
                ok_count, error_count, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 local_now_iso(),
@@ -262,6 +337,7 @@ def store_sensor_packet(packet):
                 peer_mac,
                 sequence,
                 temperature,
+                calibrated_temperature,
                 status,
                 ambient_temperature,
                 ambient_humidity,
@@ -412,7 +488,7 @@ def api_status():
         }
         row = conn.execute(
             """
-            SELECT ts, sensor_id, peer_mac, sequence, temperature_c,
+            SELECT ts, sensor_id, peer_mac, sequence, raw_temperature_c, temperature_c,
                    ambient_temperature_c, ambient_humidity_percent, ambient_status,
                    status, ok_count, error_count
             FROM readings
@@ -430,8 +506,63 @@ def api_status():
             "sensor_ids": list(SENSOR_IDS),
             "total_readings": total,
             "ports": list_serial_ports(),
+            "sensor_configs": get_sensor_configs(),
         }
     )
+
+
+@app.route("/api/config", methods=["GET", "POST"])
+def api_config():
+    if request.method == "GET":
+        return jsonify(
+            {
+                "sensors": list(get_sensor_configs().values()),
+                "serial": get_serial_config(),
+                "ports": list_serial_ports(),
+            }
+        )
+
+    payload = request.get_json(force=True) or {}
+    sensor_updates = payload.get("sensors") or []
+    validated = []
+    try:
+        for item in sensor_updates:
+            sensor_id = int(item.get("sensor_id"))
+            if sensor_id not in SENSOR_IDS:
+                raise ValueError(f"无效点位：{sensor_id}")
+            name = str(item.get("name") or "").strip()
+            if not name or len(name) > 24:
+                raise ValueError(f"点位 {sensor_id} 名称长度应为 1-24 个字符")
+            scale = float(item.get("calibration_scale", 1.0))
+            offset = float(item.get("calibration_offset", 0.0))
+            if not math.isfinite(scale) or not 0.01 <= scale <= 100:
+                raise ValueError(f"点位 {sensor_id} 校准系数超出范围")
+            if not math.isfinite(offset) or not -200 <= offset <= 200:
+                raise ValueError(f"点位 {sensor_id} 补偿值超出范围")
+            validated.append((sensor_id, name, scale, offset))
+    except (TypeError, ValueError) as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+
+    with connect_db() as conn:
+        for sensor_id, name, scale, offset in validated:
+            conn.execute(
+                """
+                UPDATE sensor_configs
+                SET name = ?, calibration_scale = ?, calibration_offset = ?
+                WHERE sensor_id = ?
+                """,
+                (name, scale, offset, sensor_id),
+            )
+            conn.execute(
+                """
+                UPDATE readings
+                SET temperature_c = raw_temperature_c * ? + ?
+                WHERE sensor_id = ? AND raw_temperature_c IS NOT NULL
+                """,
+                (scale, offset, sensor_id),
+            )
+
+    return jsonify({"ok": True, "sensors": list(get_sensor_configs().values())})
 
 
 @app.route("/api/ports")
@@ -453,6 +584,8 @@ def api_serial():
         return jsonify({"ok": False, "error": f"Serial port not found: {port}"}), 400
 
     selected = set_serial_config(port, baud)
+    set_app_config("serial_port", port)
+    set_app_config("serial_baud", baud)
     update_state(
         running=False,
         mode="serial",
@@ -480,6 +613,7 @@ def api_readings():
         rows = conn.execute(
             """
             SELECT ts, sensor_id, peer_mac, sequence, temperature_c,
+                   raw_temperature_c,
                    ambient_temperature_c, ambient_humidity_percent, ambient_status,
                    status
             FROM readings
@@ -515,7 +649,63 @@ def api_readings():
             "stats": dict(stats),
             "stats_by_sensor": stats_by_sensor,
             "sensor_ids": list(SENSOR_IDS),
+            "sensor_configs": get_sensor_configs(),
         }
+    )
+
+
+@app.route("/api/export")
+def api_export():
+    start = request.args.get("start")
+    end = request.args.get("end")
+    sensor_id = request.args.get("sensor_id", type=int)
+    try:
+        end_dt = datetime.fromisoformat(end).astimezone(LOCAL_TZ) if end else datetime.now(LOCAL_TZ)
+        start_dt = (
+            datetime.fromisoformat(start).astimezone(LOCAL_TZ)
+            if start
+            else end_dt - timedelta(hours=24)
+        )
+    except ValueError:
+        return jsonify({"error": "导出时间格式无效"}), 400
+    if start_dt >= end_dt:
+        return jsonify({"error": "开始时间必须早于结束时间"}), 400
+    if sensor_id is not None and sensor_id not in SENSOR_IDS:
+        return jsonify({"error": "点位参数无效"}), 400
+
+    params = [start_dt.isoformat(timespec="milliseconds"), end_dt.isoformat(timespec="milliseconds")]
+    sensor_filter = ""
+    if sensor_id is not None:
+        sensor_filter = " AND r.sensor_id = ?"
+        params.append(sensor_id)
+
+    with connect_db() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT r.ts, r.sensor_id, c.name AS sensor_name, r.raw_temperature_c,
+                   r.temperature_c, r.ambient_temperature_c,
+                   r.ambient_humidity_percent, r.status, r.peer_mac, r.sequence
+            FROM readings r
+            LEFT JOIN sensor_configs c ON c.sensor_id = r.sensor_id
+            WHERE r.ts >= ? AND r.ts <= ? {sensor_filter}
+            ORDER BY r.ts ASC
+            """,
+            params,
+        ).fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        ["时间", "点位编号", "点位名称", "原始温度(°C)", "校准温度(°C)",
+         "环境温度(°C)", "环境湿度(%RH)", "状态", "MAC", "序号"]
+    )
+    for row in rows:
+        writer.writerow([row[key] for key in row.keys()])
+    filename = f"temperature_history_{start_dt:%Y%m%d_%H%M}_{end_dt:%Y%m%d_%H%M}.csv"
+    return Response(
+        "\ufeff" + output.getvalue(),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -543,8 +733,10 @@ def main():
       thread = threading.Thread(target=simulator_worker, daemon=True)
       thread.start()
     else:
-      selected_port = choose_serial_port(args.serial_port)
-      set_serial_config(selected_port, args.baud)
+      saved_port = get_app_config("serial_port")
+      saved_baud = int(get_app_config("serial_baud", args.baud))
+      selected_port = choose_serial_port(args.serial_port or saved_port)
+      set_serial_config(selected_port, saved_baud)
       thread = threading.Thread(target=serial_worker, daemon=True)
       thread.start()
 
