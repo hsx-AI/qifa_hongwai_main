@@ -28,8 +28,12 @@ function formatTimestamp(ts) {
 function resizeCanvas(canvas, context) {
   const rect = canvas.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
-  canvas.width = Math.max(360, Math.floor(rect.width * ratio));
-  canvas.height = Math.max(220, Math.floor(rect.height * ratio));
+  const targetWidth = Math.max(1, Math.round(rect.width * ratio));
+  const targetHeight = Math.max(1, Math.round(rect.height * ratio));
+  if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+  }
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   return { width: rect.width, height: rect.height };
 }
@@ -159,7 +163,10 @@ function renderStation(sensorId, latest, readings) {
   station.querySelector(".sensor-humidity").textContent = formatNumber(latest?.ambient_humidity_percent, "--").replace(".0", "");
   station.querySelector(".sensor-time").textContent = formatTimestamp(latest?.ts);
   const config = currentConfig?.sensors?.find(item => Number(item.sensor_id) === sensorId);
-  station.querySelector(".sensor-name").textContent = config?.name || `测量点 ${sensorId}`;
+  const sensorName = config?.name || `测量点 ${sensorId}`;
+  station.querySelector(".sensor-name").textContent = sensorName;
+  const hotspotName = document.querySelector(`[data-hotspot-sensor="${sensorId}"] .hotspot-name`);
+  if (hotspotName) hotspotName.textContent = sensorName;
   station.classList.toggle("offline", !latest);
   lastReadings[sensorId] = readings;
   drawChart(station.querySelector("canvas"), readings);

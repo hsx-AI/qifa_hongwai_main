@@ -157,7 +157,8 @@ h1 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(28px, 3.2vw, 52px);
   max-width: 1640px;
-  min-height: calc(100vh - 196px);
+  height: calc(100vh - 196px);
+  min-height: 650px;
   margin: 0 auto;
 }
 
@@ -188,6 +189,7 @@ h1 {
 .station-frame {
   position: relative;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 48px 28px 28px;
@@ -296,12 +298,20 @@ h1 {
 
 .chart-box {
   margin-top: 10px;
-  flex: 1;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   min-height: 285px;
   padding: 12px 20px;
 }
 .chart-box h3 { margin: 0 0 5px; color: #42e2ff; font-size: clamp(16px, 1.25vw, 21px); letter-spacing: .03em; }
-.temperature-chart { display: block; width: 100%; height: calc(100% - 28px); }
+.temperature-chart {
+  display: block;
+  flex: 1 1 0;
+  width: 100%;
+  height: 0;
+  min-height: 0;
+}
 
 .system-state { position: fixed; right: 18px; bottom: 13px; z-index: 5; display: flex; align-items: center; gap: 8px; color: #7395b1; font-size: 12px; opacity: .7; }
 .system-state > span { width: 7px; height: 7px; border-radius: 50%; background: #ffc24d; box-shadow: 0 0 8px #ffc24d; }
@@ -376,9 +386,9 @@ h1 {
   .hero-title { width: 90%; }
   .hero-wing { display: none; }
   h1 { letter-spacing: .06em; }
-  .sensor-grid { grid-template-columns: 1fr; max-width: 760px; min-height: 0; }
+  .sensor-grid { grid-template-columns: 1fr; max-width: 760px; height: auto; min-height: 0; }
   .temperature span { font-size: clamp(75px, 17vw, 125px); }
-  .chart-box { height: 330px; flex: none; }
+  .chart-box { height: 330px; min-height: 330px; flex: none; }
   .system-state { position: absolute; }
   .dashboard-controls { position: relative; top: auto; right: auto; width: max-content; max-width: 100%; margin: -2px auto 8px; }
   .calibration-grid { grid-template-columns: 1fr; }
@@ -399,10 +409,278 @@ h1 {
   .clock-icon { width: 23px; height: 23px; border-width: 2px; }
   .clock-icon::before { left: 9px; top: 4px; height: 7px; }
   .clock-icon::after { left: 9px; top: 10px; }
-  .chart-box { height: 275px; padding-left: 10px; padding-right: 10px; }
+  .chart-box { height: 275px; min-height: 275px; padding-left: 10px; padding-right: 10px; }
   .viewport-frame { inset: 4px; }
   .corner-code { display: none; }
   .settings-title { display: block; }
   .settings-title p { margin-top: 5px; }
   .serial-fields, .field-pair { grid-template-columns: 1fr; }
+}
+
+/* 3D 转轴总览布局：固定视口比例，卡片覆盖在模型下方。 */
+@media (min-width: 901px) {
+  .screen { height: 100vh; min-height: 720px; padding: 6px 26px 20px; }
+  .hero { z-index: 8; height: 112px; margin: 0; }
+  .hero-title { width: min(900px, 59vw); padding-bottom: 17px; }
+  .hero-wing { top: 38px; }
+  .dashboard-controls { top: 93px; right: 38px; }
+
+  .shaft-stage {
+    position: absolute;
+    z-index: 1;
+    top: 103px;
+    left: 2.5%;
+    right: 2.5%;
+    height: 55vh;
+    min-height: 390px;
+    overflow: hidden;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 52%, rgba(0, 100, 196, .18), transparent 51%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 88%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 88%, transparent 100%);
+  }
+  #shaftScene { display: block; width: 100%; height: 100%; }
+  .shaft-scan {
+    position: absolute;
+    inset: 8% 4% 3%;
+    background: repeating-linear-gradient(90deg, transparent 0 92px, rgba(23, 121, 184, .1) 93px), repeating-linear-gradient(0deg, transparent 0 51px, rgba(23, 121, 184, .08) 52px);
+    transform: perspective(700px) rotateX(62deg) translateY(26%);
+    transform-origin: bottom;
+    opacity: .7;
+  }
+  .shaft-orbit { position: absolute; left: 50%; bottom: 7%; width: 33%; aspect-ratio: 3.3 / 1; transform: translateX(-50%); border: 1px solid rgba(19, 126, 213, .28); border-radius: 50%; box-shadow: 0 0 18px rgba(0, 111, 216, .15); }
+  .shaft-orbit::before, .shaft-orbit::after { content: ""; position: absolute; border-radius: 50%; border: 1px dashed rgba(16, 143, 230, .25); }
+  .shaft-orbit::before { inset: 18%; }
+  .shaft-orbit::after { inset: 36%; box-shadow: 0 0 22px rgba(0, 158, 255, .22); }
+  .shaft-orbit i { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; border-radius: 50%; background: #2ce4ff; box-shadow: 0 0 10px #17bfff; }
+  .shaft-orbit i:nth-child(1) { transform: translate(-830%, -490%); }
+  .shaft-orbit i:nth-child(2) { transform: translate(690%, 340%); }
+  .shaft-orbit i:nth-child(3) { transform: translate(-50%, -50%); }
+
+  .shaft-hotspot { position: absolute; z-index: 4; top: 51%; color: #cceeff; font-size: 13px; }
+  .shaft-hotspot-one { left: 31%; }
+  .shaft-hotspot-two { right: 29%; }
+  .hotspot-pulse { display: block; width: 19px; height: 19px; border: 5px solid #62fbff; border-radius: 50%; background: #d5ffff; box-shadow: 0 0 0 7px rgba(15, 225, 255, .17), 0 0 22px 7px #00baff; animation: hotspotPulse 2s ease-in-out infinite; }
+  .hotspot-name { position: absolute; top: 31px; left: -23px; width: 80px; padding: 4px 7px; border: 1px solid rgba(36, 205, 255, .8); background: rgba(1, 15, 31, .9); text-align: center; font-weight: 500; white-space: nowrap; clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%); }
+  .shaft-hotspot::after { content: ""; position: absolute; top: 43px; width: 2px; height: clamp(95px, 13vh, 150px); background: linear-gradient(#24eaff, rgba(0, 174, 255, .2)); box-shadow: 0 0 6px #00cfff; transform-origin: top; }
+  .shaft-hotspot-one::after { left: -15px; transform: rotate(35deg); }
+  .shaft-hotspot-two::after { right: -9px; transform: rotate(-35deg); }
+  @keyframes hotspotPulse { 50% { transform: scale(1.12); box-shadow: 0 0 0 11px rgba(15, 225, 255, .08), 0 0 28px 9px #00baff; } }
+
+  .sensor-grid {
+    position: absolute;
+    z-index: 6;
+    left: 2.2%;
+    right: 2.2%;
+    bottom: 4.6%;
+    width: auto;
+    max-width: none;
+    height: min(39vh, 405px);
+    min-height: 300px;
+    margin: 0;
+    grid-template-columns: minmax(410px, 32.5%) minmax(410px, 32.5%);
+    justify-content: space-between;
+    gap: 4%;
+  }
+  .sensor-station { padding-top: 25px; }
+  .station-cap { left: 20%; right: 20%; height: 42px; }
+  .station-cap h2 { font-size: clamp(18px, 1.45vw, 25px); }
+  .station-frame { padding: 35px 18px 15px; background: linear-gradient(180deg, rgba(3, 23, 44, .93), rgba(2, 14, 29, .96)); box-shadow: inset 0 0 30px rgba(0, 110, 185, .12), 0 0 20px rgba(0, 103, 180, .2); }
+  .frame-rail { top: 40%; bottom: 28%; }
+  .reading-panel { min-height: 104px; grid-template-columns: 56% 44%; }
+  .process-reading { padding: 10px 16px 9px; }
+  .reading-label { font-size: clamp(15px, 1vw, 18px); }
+  .temperature { margin-top: 9px; }
+  .temperature span { font-size: clamp(45px, 4.3vw, 69px); }
+  .temperature small { margin: 0 0 2px 8px; font-size: clamp(17px, 1.6vw, 25px); }
+  .ambient-readings { margin: 12px 0; padding: 0 11px; }
+  .ambient-item { gap: 10px; }
+  .hex-icon { flex-basis: 37px; width: 37px; height: 37px; }
+  .metric-icon { width: 23px; height: 23px; }
+  .ambient-label { font-size: clamp(11px, .8vw, 14px); }
+  .ambient-value { margin-top: 2px; font-size: clamp(17px, 1.25vw, 21px); }
+  .update-row { height: 37px; gap: 8px; font-size: clamp(11px, .78vw, 14px); }
+  .update-row time { margin-left: clamp(7px, 1.2vw, 17px); }
+  .clock-icon { width: 21px; height: 21px; border-width: 2px; }
+  .clock-icon::before { left: 8px; top: 3px; height: 7px; }
+  .clock-icon::after { left: 8px; top: 9px; width: 6px; }
+  .chart-box { min-height: 0; margin-top: 7px; padding: 8px 13px 7px; }
+  .chart-box h3 { margin-bottom: 2px; font-size: clamp(12px, .88vw, 15px); }
+  .system-state { z-index: 10; }
+}
+
+@media (min-width: 901px) and (max-height: 820px) {
+  .hero { height: 94px; }
+  .dashboard-controls { top: 78px; }
+  .shaft-stage { top: 84px; height: 52vh; min-height: 330px; }
+  .sensor-grid { bottom: 3.5%; height: 41vh; min-height: 285px; }
+  .station-frame { padding-top: 31px; }
+  .reading-panel { min-height: 92px; }
+  .temperature span { font-size: clamp(42px, 4vw, 62px); }
+}
+
+@media (max-width: 900px) {
+  .shaft-stage { position: relative; height: 330px; margin: 0 auto 8px; overflow: hidden; pointer-events: none; }
+  #shaftScene { display: block; width: 100%; height: 100%; }
+  .shaft-scan, .shaft-orbit { display: none; }
+  .shaft-hotspot { position: absolute; top: 53%; color: #dffaff; font-size: 12px; }
+  .shaft-hotspot-one { left: 29%; }
+  .shaft-hotspot-two { right: 27%; }
+  .hotspot-pulse { display: block; width: 15px; height: 15px; border: 4px solid #5df7ff; border-radius: 50%; background: white; box-shadow: 0 0 15px #00cfff; }
+  .hotspot-name { display: block; margin: 8px 0 0 -24px; width: 70px; text-align: center; }
+}
+
+/* 目标效果精修 */
+.unit-symbol { white-space: nowrap; unicode-bidi: isolate; }
+
+@media (min-width: 901px) {
+  .screen {
+    background:
+      radial-gradient(ellipse at 50% 34%, rgba(0, 94, 181, .19), transparent 38%),
+      linear-gradient(rgba(1, 10, 23, .62), rgba(1, 9, 21, .9)),
+      repeating-linear-gradient(0deg, transparent 0 39px, rgba(22, 112, 167, .05) 40px),
+      repeating-linear-gradient(90deg, transparent 0 39px, rgba(22, 112, 167, .05) 40px),
+      #010815;
+  }
+  h1 { font-size: clamp(30px, 3.05vw, 51px); letter-spacing: .13em; }
+  .hero-title { width: min(900px, 60vw); }
+  .hero-title::before, .hero-title::after { width: 118px; }
+  .dashboard-controls { top: 108px; opacity: .88; transform: scale(.94); transform-origin: top right; }
+
+  .shaft-stage { top: 102px; height: 56vh; min-height: 405px; overflow: visible; }
+  .shaft-stage::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    left: 50%;
+    top: 1%;
+    width: min(610px, 44vw);
+    aspect-ratio: 1;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background:
+      repeating-conic-gradient(from 4deg, rgba(20, 133, 226, .28) 0 1deg, transparent 1deg 7deg),
+      radial-gradient(circle, transparent 51%, rgba(15, 103, 196, .22) 51.3% 51.8%, transparent 52.1% 59%, rgba(13, 92, 183, .18) 59.3% 59.8%, transparent 60.1% 67%, rgba(15, 116, 214, .13) 67.3% 67.8%, transparent 68.1%);
+    opacity: .62;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0 62%, transparent 82%);
+    mask-image: linear-gradient(to bottom, #000 0 62%, transparent 82%);
+  }
+  .shaft-stage::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    left: 7%;
+    right: 7%;
+    bottom: 6%;
+    height: 42%;
+    border-top: 1px solid rgba(26, 125, 208, .18);
+    background: radial-gradient(ellipse at 50% 100%, rgba(0, 87, 173, .18), transparent 60%);
+    transform: perspective(760px) rotateX(64deg);
+    transform-origin: bottom;
+  }
+  .shaft-scan { opacity: .48; }
+  .shaft-orbit { bottom: 3%; width: 38%; opacity: .72; }
+
+  .shaft-hotspot { top: 49%; }
+  .shaft-hotspot-one { left: 32%; }
+  .shaft-hotspot-two { right: 31%; }
+  .hotspot-name { top: 32px; background: rgba(1, 14, 29, .96); }
+  .shaft-hotspot::after { height: clamp(100px, 14vh, 155px); }
+
+  .sensor-grid {
+    bottom: 4.4%;
+    height: min(40vh, 410px);
+    min-height: 310px;
+    grid-template-columns: minmax(420px, 32%) minmax(420px, 32%);
+  }
+  .sensor-station { padding-top: 27px; }
+  .station-cap { left: 19%; right: 19%; height: 43px; }
+  .station-frame {
+    padding: 36px 17px 14px;
+    border-color: rgba(43, 197, 255, .34);
+    background:
+      linear-gradient(135deg, rgba(8, 58, 94, .34), transparent 15%, transparent 85%, rgba(8, 58, 94, .3)),
+      linear-gradient(180deg, rgba(3, 24, 45, .95), rgba(2, 13, 28, .98));
+    box-shadow:
+      inset 0 0 0 1px rgba(26, 121, 182, .2),
+      inset 0 0 35px rgba(0, 108, 183, .12),
+      0 0 20px rgba(0, 114, 207, .22);
+  }
+  .reading-panel { min-height: 108px; grid-template-columns: 54% 46%; }
+  .process-reading { padding: 10px 13px 9px; }
+  .temperature span { font-size: clamp(48px, 4.45vw, 72px); }
+  .temperature small { flex: 0 0 auto; font-size: clamp(15px, 1.35vw, 22px); }
+  .ambient-readings { min-width: 0; padding: 0 8px 0 11px; }
+  .ambient-item { gap: 8px; }
+  .ambient-item > div { min-width: 0; }
+  .ambient-label { font-size: clamp(11px, .77vw, 13px); }
+  .ambient-value { font-size: clamp(16px, 1.18vw, 20px); }
+  .ambient-value small { font-size: .62em; }
+  .chart-box { min-height: 122px; padding: 8px 13px 6px; }
+  .chart-box h3 { line-height: 20px; }
+  .temperature-chart { min-height: 82px; }
+}
+
+.measurement-links {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.measurement-links line {
+  stroke-width: 2;
+  filter: drop-shadow(0 0 5px #00cfff);
+  vector-effect: non-scaling-stroke;
+}
+
+@media (min-width: 901px) {
+  .shaft-stage { pointer-events: none; }
+  .shaft-hotspot {
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+  .shaft-hotspot:active,
+  .shaft-hotspot.is-dragging { cursor: grabbing; }
+  .shaft-hotspot::after { display: none; }
+  .sensor-station { will-change: transform; }
+  .station-cap {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+  .station-cap:active,
+  .sensor-station.is-dragging .station-cap { cursor: grabbing; }
+  .station-cap::after {
+    content: "拖动";
+    position: absolute;
+    right: 13px;
+    top: 50%;
+    color: rgba(86, 218, 255, .48);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: .08em;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  .station-cap:hover::after,
+  .sensor-station.is-dragging .station-cap::after { opacity: 1; }
+  .sensor-station.is-dragging,
+  .shaft-hotspot.is-dragging { z-index: 40; }
+}
+
+@media (max-width: 900px) {
+  .measurement-links { display: none; }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+  .sensor-grid { height: min(41vh, 420px); }
+  .reading-panel { min-height: 116px; }
+  .chart-box { min-height: 142px; }
+  .temperature-chart { min-height: 100px; }
 }

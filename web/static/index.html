@@ -4,9 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#020b18" />
+    <meta name="google" content="notranslate" />
     <title>汽发转轴加工温度在线监测</title>
     <link rel="stylesheet" href="https://unpkg.com/augmented-ui@2/augmented-ui.min.css" />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260902-2" />
   </head>
   <body>
     <main class="screen">
@@ -42,6 +43,35 @@
         <button class="control-button" id="settingsButton" type="button">系统配置</button>
       </nav>
 
+      <section class="shaft-stage" id="shaftStage" aria-label="汽发转轴三维监测示意">
+        <canvas id="shaftScene" aria-hidden="true"></canvas>
+        <div class="shaft-scan" aria-hidden="true"></div>
+        <div class="shaft-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="shaft-hotspot shaft-hotspot-one" data-hotspot-sensor="1">
+          <span class="hotspot-pulse" aria-hidden="true"></span>
+          <b class="hotspot-name">测量点 1</b>
+        </div>
+        <div class="shaft-hotspot shaft-hotspot-two" data-hotspot-sensor="2">
+          <span class="hotspot-pulse" aria-hidden="true"></span>
+          <b class="hotspot-name">测量点 2</b>
+        </div>
+      </section>
+
+      <svg class="measurement-links" id="measurementLinks" aria-hidden="true">
+        <defs>
+          <linearGradient id="linkGradientOne" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#41f4ff" />
+            <stop offset="1" stop-color="#078fd8" stop-opacity=".28" />
+          </linearGradient>
+          <linearGradient id="linkGradientTwo" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#41f4ff" />
+            <stop offset="1" stop-color="#078fd8" stop-opacity=".28" />
+          </linearGradient>
+        </defs>
+        <line data-link-sensor="1" stroke="url(#linkGradientOne)" />
+        <line data-link-sensor="2" stroke="url(#linkGradientTwo)" />
+      </svg>
+
       <section class="sensor-grid" id="sensorCards" aria-label="温度测点">
         <article class="sensor-station" data-sensor-id="1">
           <div class="station-cap" data-augmented-ui="l-clip r-clip border"><h2 class="sensor-name">测量点 1</h2></div>
@@ -51,7 +81,7 @@
             <section class="reading-panel" data-augmented-ui="tl-clip tr-clip br-clip bl-clip border">
               <div class="process-reading">
                 <div class="reading-label">加工温度</div>
-                <div class="temperature"><span class="sensor-temp">--.-</span><small>°C</small></div>
+                <div class="temperature"><span class="sensor-temp">--.-</span><small class="unit-symbol notranslate" translate="no">°C</small></div>
               </div>
               <div class="ambient-readings">
                 <div class="ambient-item">
@@ -61,7 +91,7 @@
                       <path d="M12 9l0 6" />
                     </svg>
                   </span>
-                  <div><div class="ambient-label">环境温度</div><div class="ambient-value"><span class="sensor-ambient-temp">--.-</span> <small>°C</small></div></div>
+                  <div><div class="ambient-label">环境温度</div><div class="ambient-value"><span class="sensor-ambient-temp">--.-</span> <small class="unit-symbol notranslate" translate="no">°C</small></div></div>
                 </div>
                 <div class="ambient-item">
                   <span class="hex-icon" aria-hidden="true">
@@ -69,7 +99,7 @@
                       <path d="M7.502 19.423a5.985 5.985 0 0 0 4.498 2.077c3.314 0 6 -2.686 6 -6c0 -3 -2 -5.5 -6 -10c-4 4.5 -6 7 -6 10a6 6 0 0 0 1.502 3.923z" />
                     </svg>
                   </span>
-                  <div><div class="ambient-label">环境湿度</div><div class="ambient-value"><span class="sensor-humidity">--</span> <small>%RH</small></div></div>
+                  <div><div class="ambient-label">环境湿度</div><div class="ambient-value"><span class="sensor-humidity">--</span> <small class="unit-symbol notranslate" translate="no">%RH</small></div></div>
                 </div>
               </div>
             </section>
@@ -89,7 +119,7 @@
             <section class="reading-panel" data-augmented-ui="tl-clip tr-clip br-clip bl-clip border">
               <div class="process-reading">
                 <div class="reading-label">加工温度</div>
-                <div class="temperature"><span class="sensor-temp">--.-</span><small>°C</small></div>
+                <div class="temperature"><span class="sensor-temp">--.-</span><small class="unit-symbol notranslate" translate="no">°C</small></div>
               </div>
               <div class="ambient-readings">
                 <div class="ambient-item">
@@ -99,7 +129,7 @@
                       <path d="M12 9l0 6" />
                     </svg>
                   </span>
-                  <div><div class="ambient-label">环境温度</div><div class="ambient-value"><span class="sensor-ambient-temp">--.-</span> <small>°C</small></div></div>
+                  <div><div class="ambient-label">环境温度</div><div class="ambient-value"><span class="sensor-ambient-temp">--.-</span> <small class="unit-symbol notranslate" translate="no">°C</small></div></div>
                 </div>
                 <div class="ambient-item">
                   <span class="hex-icon" aria-hidden="true">
@@ -107,7 +137,7 @@
                       <path d="M7.502 19.423a5.985 5.985 0 0 0 4.498 2.077c3.314 0 6 -2.686 6 -6c0 -3 -2 -5.5 -6 -10c-4 4.5 -6 7 -6 10a6 6 0 0 0 1.502 3.923z" />
                     </svg>
                   </span>
-                  <div><div class="ambient-label">环境湿度</div><div class="ambient-value"><span class="sensor-humidity">--</span> <small>%RH</small></div></div>
+                  <div><div class="ambient-label">环境湿度</div><div class="ambient-value"><span class="sensor-humidity">--</span> <small class="unit-symbol notranslate" translate="no">%RH</small></div></div>
                 </div>
               </div>
             </section>
@@ -181,6 +211,9 @@
       <div class="system-state" id="systemState"><span></span><b id="collectorState">正在连接监测系统</b></div>
       <footer class="tech-footer" aria-hidden="true"><i></i><i></i><i></i></footer>
     </main>
-    <script src="/app.js"></script>
+    <script src="/vendor/three.min.js?v=0.160.0"></script>
+    <script src="/shaft-scene.js?v=20260902-1"></script>
+    <script src="/app.js?v=20260902-1"></script>
+    <script src="/layout-drag.js?v=20260902-2"></script>
   </body>
 </html>
