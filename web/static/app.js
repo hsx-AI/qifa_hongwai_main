@@ -4,16 +4,25 @@ let activeWindow = 1800;
 const lastReadings = { 1: [], 2: [] };
 const latestBySensor = { 1: null, 2: null };
 let currentConfig = null;
+let refreshInProgress = false;
 const timeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  timeZone: "Asia/Shanghai",
   year: "numeric", month: "2-digit", day: "2-digit",
   hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
 });
 const axisTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  timeZone: "Asia/Shanghai",
   hour: "2-digit", minute: "2-digit", hour12: false,
+});
+const longAxisTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  timeZone: "Asia/Shanghai",
+  month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  hour12: false,
 });
 
 function parseTs(ts) { return new Date(ts).getTime(); }
 function formatNumber(value, fallback = "--.-") {
+  if (value === null || value === undefined || value === "") return fallback;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric.toFixed(1) : fallback;
 }
@@ -25,9 +34,20 @@ function formatTimestamp(ts) {
   return timeFormatter.format(new Date(ts)).replaceAll("/", "-");
 }
 
+/**
+ * 按 3.5V 为零电量、4.2V 为满电计算百分比，并将有效电压限制在该范围内。
+ * 缺失或非数字电压返回 null，供页面显示为未知，而不是误报为 0%。
+ */
+function calculateBatteryPercent(voltage) {
+  if (voltage === null || voltage === undefined || voltage === "") return null;
+  const numeric = Number(voltage);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.round(Math.max(0, Math.min(100, ((numeric - 3.5) / 0.7) * 100)));
+}
+
 function resizeCanvas(canvas, context) {
   const rect = canvas.getBoundingClientRect();
-  const ratio = window.devicePixelRatio || 1;
+  const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
   const targetWidth = Math.max(1, Math.round(rect.width * ratio));
   const targetHeight = Math.max(1, Math.round(rect.height * ratio));
   if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
@@ -38,64 +58,75 @@ function resizeCanvas(canvas, context) {
   return { width: rect.width, height: rect.height };
 }
 
-function smooth(values) {
-  if (values.length < 5) return values;
-  return values.map((_, index) => {
-    const range = values.slice(Math.max(0, index - 2), Math.min(values.length, index + 3));
-    return range.reduce((total, value) => total + value, 0) / range.length;
-  });
-}
-
 function drawChart(canvas, readings) {
   const ctx = canvas.getContext("2d");
   const { width, height } = resizeCanvas(canvas, ctx);
   ctx.clearRect(0, 0, width, height);
 
-  const pad = { left: 47, right: 15, top: 12, bottom: 34 };
+  const pad = { left: 52, right: 16, top: 18, bottom: 36 };
   const plotWidth = Math.max(1, width - pad.left - pad.right);
   const plotHeight = Math.max(1, height - pad.top - pad.bottom);
-  const temperatures = readings.map(item => Number(item.temperature_c)).filter(Number.isFinite);
   const now = Date.now();
-  const validTimes = readings.map(item => parseTs(item.ts)).filter(Number.isFinite);
-  const minTime = validTimes.length ? Math.min(...validTimes) : now - activeWindow * 1000;
-  const maxTime = validTimes.length ? Math.max(...validTimes) : now;
-
-  let minTemp = 40;
-  let maxTemp = 80;
-  if (temperatures.length) {
-    const rawMin = Math.min(...temperatures);
-    const rawMax = Math.max(...temperatures);
-    if (rawMin < 40 || rawMax > 80) {
-      minTemp = Math.floor((rawMin - 5) / 10) * 10;
-      maxTemp = Math.ceil((rawMax + 5) / 10) * 10;
-    }
-  }
+  const minTime = now - activeWindow * 1000;
+  const maxTime = now;
+  const points = readings
+    .map(item => ({ time: parseTs(item.ts), temperature: Number(item.temperature_c) }))
+    .filter(item => Number.isFinite(item.time)
+      && Number.isFinite(item.temperature)
+      && item.time >= minTime
+      && item.time <= maxTime);
+  const temperatures = points.map(item => item.temperature);
+  const hasPoints = temperatures.length > 0;
+  const rawMin = hasPoints ? Math.min(...temperatures) : 40;
+  const rawMax = hasPoints ? Math.max(...temperatures) : 80;
+  const spread = Math.max(rawMax - rawMin, 1);
+  const padding = Math.max(spread * 0.15, 0.5);
+  const roughStep = (spread + padding * 2) / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const normalizedStep = roughStep / magnitude;
+  const stepFactor = normalizedStep <= 1.5 ? 1
+    : normalizedStep <= 2.5 ? 2
+      : normalizedStep <= 3.5 ? 2.5
+        : normalizedStep <= 7.5 ? 5 : 10;
+  const tempStep = hasPoints ? stepFactor * magnitude : 10;
+  const minTemp = hasPoints ? Math.floor((rawMin - padding) / tempStep) * tempStep : 40;
+  const maxTemp = hasPoints ? Math.ceil((rawMax + padding) / tempStep) * tempStep : 80;
 
   ctx.font = `${Math.max(11, Math.min(16, width / 44))}px Microsoft YaHei`;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  for (let row = 0; row <= 4; row += 1) {
-    const y = pad.top + (plotHeight / 4) * row;
-    const value = maxTemp - ((maxTemp - minTemp) / 4) * row;
-    ctx.strokeStyle = "rgba(40, 153, 210, .28)";
+  ctx.fillStyle = "rgba(157, 195, 218, .82)";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("°C", 8, pad.top - 3);
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  const rowCount = Math.max(1, Math.round((maxTemp - minTemp) / tempStep));
+  for (let row = 0; row <= rowCount; row += 1) {
+    const value = maxTemp - tempStep * row;
+    const y = pad.top + (plotHeight / rowCount) * row;
+    ctx.strokeStyle = "rgba(112, 165, 196, .22)";
     ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(width - pad.right, y); ctx.stroke();
-    ctx.fillStyle = "rgba(240, 247, 255, .88)";
-    ctx.fillText(Math.round(value), pad.left - 10, y);
+    ctx.fillStyle = "rgba(202, 220, 233, .88)";
+    ctx.fillText(Number.isInteger(tempStep) ? String(Math.round(value)) : value.toFixed(1), pad.left - 10, y);
   }
 
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
-  for (let col = 0; col <= 6; col += 1) {
-    const x = pad.left + (plotWidth / 6) * col;
-    ctx.strokeStyle = "rgba(40, 153, 210, .25)";
+  const columnCount = Math.max(2, Math.min(6, Math.floor(plotWidth / 78)));
+  const timeFormatter = activeWindow >= 86400 ? longAxisTimeFormatter : axisTimeFormatter;
+  for (let col = 0; col <= columnCount; col += 1) {
+    const x = pad.left + (plotWidth / columnCount) * col;
+    ctx.strokeStyle = "rgba(112, 165, 196, .16)";
     ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + plotHeight); ctx.stroke();
-    const time = minTime + ((maxTime - minTime) / 6) * col;
-    ctx.fillStyle = "rgba(240, 247, 255, .88)";
-    ctx.fillText(axisTimeFormatter.format(new Date(time)), x, pad.top + plotHeight + 10);
+    const time = minTime + ((maxTime - minTime) / columnCount) * col;
+    ctx.fillStyle = "rgba(202, 220, 233, .82)";
+    ctx.font = `${Math.max(10, Math.min(13, width / 52))}px Microsoft YaHei`;
+    ctx.fillText(timeFormatter.format(new Date(time)), x, pad.top + plotHeight + 9);
   }
   ctx.setLineDash([]);
-  ctx.strokeStyle = "rgba(223, 238, 250, .8)";
+  ctx.strokeStyle = "rgba(147, 188, 212, .58)";
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(pad.left, pad.top);
@@ -103,7 +134,7 @@ function drawChart(canvas, readings) {
   ctx.lineTo(width - pad.right, pad.top + plotHeight);
   ctx.stroke();
 
-  if (!temperatures.length) {
+  if (!points.length) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(155, 187, 212, .72)";
@@ -114,38 +145,84 @@ function drawChart(canvas, readings) {
 
   const xFor = value => pad.left + ((value - minTime) / Math.max(1, maxTime - minTime)) * plotWidth;
   const yFor = value => pad.top + (1 - (value - minTemp) / Math.max(1, maxTemp - minTemp)) * plotHeight;
-  const values = smooth(readings.map(item => Number(item.temperature_c)));
-  const points = readings.map((item, index) => ({ x: xFor(parseTs(item.ts)), y: yFor(values[index]) }));
+  const chartPoints = points.map(item => ({
+    ...item,
+    x: xFor(item.time),
+    y: yFor(item.temperature),
+  }));
+  const renderPoints = [];
+  let bucketX = null;
+  let bucket = [];
+  const flushBucket = () => {
+    if (!bucket.length) return;
+    if (bucket.length === 1) {
+      renderPoints.push(bucket[0]);
+    } else {
+      const low = bucket.reduce((best, point) => point.temperature < best.temperature ? point : best);
+      const high = bucket.reduce((best, point) => point.temperature > best.temperature ? point : best);
+      renderPoints.push(...[low, high].sort((a, b) => a.time - b.time));
+    }
+  };
+  chartPoints.forEach(point => {
+    const pixel = Math.floor(point.x);
+    if (bucketX !== null && pixel !== bucketX) {
+      flushBucket();
+      bucket = [];
+    }
+    bucketX = pixel;
+    bucket.push(point);
+  });
+  flushBucket();
 
   const fill = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotHeight);
-  fill.addColorStop(0, "rgba(10, 197, 244, .36)");
-  fill.addColorStop(1, "rgba(10, 136, 205, .03)");
+  fill.addColorStop(0, "rgba(10, 197, 244, .2)");
+  fill.addColorStop(1, "rgba(10, 136, 205, .01)");
   ctx.beginPath();
-  ctx.moveTo(points[0].x, pad.top + plotHeight);
-  points.forEach(point => ctx.lineTo(point.x, point.y));
-  ctx.lineTo(points.at(-1).x, pad.top + plotHeight);
+  ctx.moveTo(renderPoints[0].x, pad.top + plotHeight);
+  renderPoints.forEach(point => ctx.lineTo(point.x, point.y));
+  ctx.lineTo(renderPoints.at(-1).x, pad.top + plotHeight);
   ctx.closePath();
   ctx.fillStyle = fill;
   ctx.fill();
 
   ctx.save();
   ctx.beginPath();
-  ctx.moveTo(points[0].x, points[0].y);
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1];
-    const point = points[index];
-    const midX = (previous.x + point.x) / 2;
-    ctx.quadraticCurveTo(previous.x, previous.y, midX, (previous.y + point.y) / 2);
-  }
-  ctx.lineTo(points.at(-1).x, points.at(-1).y);
+  ctx.moveTo(renderPoints[0].x, renderPoints[0].y);
+  renderPoints.slice(1).forEach(point => ctx.lineTo(point.x, point.y));
   ctx.strokeStyle = "#16d7ff";
-  ctx.lineWidth = 3;
-  ctx.shadowColor = "rgba(0, 200, 255, .8)";
-  ctx.shadowBlur = 9;
+  ctx.lineWidth = 2.5;
+  ctx.shadowColor = "rgba(0, 200, 255, .55)";
+  ctx.shadowBlur = 5;
   ctx.stroke();
   ctx.restore();
 
-  const last = points.at(-1);
+  const drawMarker = (point, label, color, verticalOffset) => {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "#061522";
+    ctx.stroke();
+
+    const text = `${label} ${point.temperature.toFixed(1)}°C`;
+    ctx.font = `${Math.max(10, Math.min(12, width / 58))}px Microsoft YaHei`;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = point.x > width * 0.72 ? "right" : "left";
+    ctx.fillStyle = color;
+    const labelY = Math.max(pad.top + 6, Math.min(pad.top + plotHeight - 6, point.y + verticalOffset));
+    ctx.fillText(text, point.x + (ctx.textAlign === "right" ? -8 : 8), labelY);
+  };
+  const lowest = chartPoints.reduce((best, point) => point.temperature < best.temperature ? point : best);
+  const highest = chartPoints.reduce((best, point) => point.temperature > best.temperature ? point : best);
+  if (lowest === highest) {
+    drawMarker(highest, "当前", "#43e8ff", -13);
+  } else {
+    drawMarker(highest, "最高", "#ffc76b", -12);
+    drawMarker(lowest, "最低", "#75c8ff", 12);
+  }
+
+  const last = chartPoints.at(-1);
   ctx.beginPath();
   ctx.arc(last.x, last.y, 6, 0, Math.PI * 2);
   ctx.fillStyle = "#43e8ff";
@@ -155,12 +232,37 @@ function drawChart(canvas, readings) {
   ctx.shadowBlur = 0;
 }
 
-function renderStation(sensorId, latest, readings) {
+function calculateTrend(readings) {
+  const values = readings
+    .map(item => Number(item.temperature_c))
+    .filter(Number.isFinite);
+  if (values.length < 4) return "趋势：数据不足";
+  const half = Math.max(2, Math.floor(values.length / 2));
+  const previous = values.slice(0, half);
+  const recent = values.slice(-half);
+  const change = recent.reduce((sum, value) => sum + value, 0) / recent.length
+    - previous.reduce((sum, value) => sum + value, 0) / previous.length;
+  if (Math.abs(change) < 0.2) return "趋势：基本平稳";
+  return `趋势：${change > 0 ? "上升" : "下降"} ${Math.abs(change).toFixed(1)}°C`;
+}
+
+function renderStation(sensorId, latest, readings, stats) {
   const station = getStation(sensorId);
   if (!station) return;
   station.querySelector(".sensor-temp").textContent = formatNumber(latest?.temperature_c);
   station.querySelector(".sensor-ambient-temp").textContent = formatNumber(latest?.ambient_temperature_c);
   station.querySelector(".sensor-humidity").textContent = formatNumber(latest?.ambient_humidity_percent, "--").replace(".0", "");
+  const batteryPercent = calculateBatteryPercent(latest?.battery_voltage_v);
+  const batteryVoltage = latest?.battery_voltage_v == null || latest.battery_voltage_v === ""
+    ? null : Number(latest.battery_voltage_v);
+  const batteryItem = station.querySelector(".battery-item");
+  const batteryFill = station.querySelector(".battery-fill");
+  station.querySelector(".sensor-battery").textContent = batteryPercent === null ? "--" : String(batteryPercent);
+  station.querySelector(".sensor-battery-voltage").textContent = Number.isFinite(batteryVoltage)
+    ? `${batteryVoltage.toFixed(2)}V` : "--V";
+  batteryItem.classList.toggle("low", batteryPercent !== null && batteryPercent > 0 && batteryPercent <= 15);
+  batteryItem.classList.toggle("depleted", batteryPercent === 0);
+  batteryFill.setAttribute("width", batteryPercent === null ? "0" : (batteryPercent * 0.21).toFixed(2));
   station.querySelector(".sensor-time").textContent = formatTimestamp(latest?.ts);
   const config = currentConfig?.sensors?.find(item => Number(item.sensor_id) === sensorId);
   const sensorName = config?.name || `测量点 ${sensorId}`;
@@ -168,14 +270,21 @@ function renderStation(sensorId, latest, readings) {
   const hotspotName = document.querySelector(`[data-hotspot-sensor="${sensorId}"] .hotspot-name`);
   if (hotspotName) hotspotName.textContent = sensorName;
   station.classList.toggle("offline", !latest);
+  station.querySelector(".chart-min").textContent = formatNumber(stats?.min_temp);
+  station.querySelector(".chart-avg").textContent = formatNumber(stats?.avg_temp);
+  station.querySelector(".chart-max").textContent = formatNumber(stats?.max_temp);
+  station.querySelector(".chart-trend").textContent = calculateTrend(readings);
   lastReadings[sensorId] = readings;
   drawChart(station.querySelector("canvas"), readings);
 }
 
+// 避免接口响应超过轮询间隔时叠加请求，减少弱网和低性能终端的额外负担。
 async function refresh() {
+  if (refreshInProgress) return;
+  refreshInProgress = true;
   try {
     const [statusResponse, readingsResponse] = await Promise.all([
-      fetch("/api/status"),
+      fetch("/api/status?brief=1"),
       fetch(`/api/readings?window=${activeWindow}`),
     ]);
     if (!statusResponse.ok || !readingsResponse.ok) throw new Error("接口暂不可用");
@@ -190,6 +299,7 @@ async function refresh() {
       sensorId,
       status.latest_by_sensor?.[sensorId],
       readings.filter(item => Number(item.sensor_id) === sensorId).sort((a, b) => parseTs(a.ts) - parseTs(b.ts)),
+      payload.stats_by_sensor?.[sensorId],
     ));
     SENSOR_IDS.forEach(sensorId => { latestBySensor[sensorId] = status.latest_by_sensor?.[sensorId] || null; });
 
@@ -202,6 +312,8 @@ async function refresh() {
   } catch (error) {
     document.getElementById("collectorState").textContent = "监测服务连接中";
     SENSOR_IDS.forEach(sensorId => drawChart(getStation(sensorId).querySelector("canvas"), lastReadings[sensorId]));
+  } finally {
+    refreshInProgress = false;
   }
 }
 
@@ -299,8 +411,20 @@ async function applySerial() {
 }
 
 function localInputValue(date) {
-  const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return shifted.toISOString().slice(0, 16);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).map(part => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+function beijingInputToISOString(value) {
+  return new Date(`${value}:00+08:00`).toISOString();
 }
 
 function openExportDialog() {
@@ -325,8 +449,8 @@ function downloadExport() {
   }
   document.getElementById("exportStart").setCustomValidity("");
   const params = new URLSearchParams({
-    start: new Date(startValue).toISOString(),
-    end: new Date(endValue).toISOString(),
+    start: beijingInputToISOString(startValue),
+    end: beijingInputToISOString(endValue),
   });
   const sensorId = document.getElementById("exportSensor").value;
   if (sensorId) params.set("sensor_id", sensorId);

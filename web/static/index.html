@@ -6,8 +6,9 @@
     <meta name="theme-color" content="#020b18" />
     <meta name="google" content="notranslate" />
     <title>汽发转轴加工温度在线监测</title>
-    <link rel="stylesheet" href="https://unpkg.com/augmented-ui@2/augmented-ui.min.css" />
-    <link rel="stylesheet" href="/styles.css?v=20260902-2" />
+    <link rel="stylesheet" href="/vendor/augmented-ui.min.css?v=20261026-1" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="/vendor/augmented-ui.min.css?v=20261026-1" /></noscript>
+    <link rel="stylesheet" href="/styles.css?v=20261029-5" />
   </head>
   <body>
     <main class="screen">
@@ -43,8 +44,9 @@
         <button class="control-button" id="settingsButton" type="button">系统配置</button>
       </nav>
 
-      <section class="shaft-stage" id="shaftStage" aria-label="汽发转轴三维监测示意">
+      <section class="shaft-stage" id="shaftStage" data-scene-state="loading" aria-label="汽发转轴三维监测示意">
         <canvas id="shaftScene" aria-hidden="true"></canvas>
+        <div class="shaft-status" aria-live="polite"><i aria-hidden="true"></i><span>正在准备转轴示意</span></div>
         <div class="shaft-scan" aria-hidden="true"></div>
         <div class="shaft-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
         <div class="shaft-hotspot shaft-hotspot-one" data-hotspot-sensor="1">
@@ -71,6 +73,11 @@
         <line data-link-sensor="1" stroke="url(#linkGradientOne)" />
         <line data-link-sensor="2" stroke="url(#linkGradientTwo)" />
       </svg>
+
+      <div class="team-watermark" aria-label="智能制造工艺部，智能室能做科技团队">
+        <span>智能制造工艺部</span>
+        <strong>智能室能做科技团队</strong>
+      </div>
 
       <section class="sensor-grid" id="sensorCards" aria-label="温度测点">
         <article class="sensor-station" data-sensor-id="1">
@@ -101,11 +108,31 @@
                   </span>
                   <div><div class="ambient-label">环境湿度</div><div class="ambient-value"><span class="sensor-humidity">--</span> <small class="unit-symbol notranslate" translate="no">%RH</small></div></div>
                 </div>
+                <div class="ambient-item battery-item">
+                  <span class="hex-icon" aria-hidden="true">
+                    <svg class="metric-icon battery-icon" viewBox="0 0 34 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+                      <rect x="2.5" y="5.5" width="25" height="13" rx="2" />
+                      <path d="M29 9h2.5v6H29z" />
+                      <rect x="4.5" y="7.5" width="21" height="9" rx="1" fill="rgba(80, 150, 180, .22)" stroke="none" />
+                      <rect class="battery-fill" x="4.5" y="7.5" width="0" height="9" rx="1" fill="currentColor" stroke="none" />
+                    </svg>
+                  </span>
+                  <div>
+                    <div class="ambient-label">设备电量</div>
+                    <div class="ambient-value battery-value"><span class="sensor-battery">--</span><small>% · <span class="sensor-battery-voltage">--V</span></small></div>
+                  </div>
+                </div>
               </div>
             </section>
             <div class="update-row" data-augmented-ui="tl-clip tr-clip br-clip bl-clip border"><span class="clock-icon" aria-hidden="true"></span><span>数据更新时间：</span><time class="sensor-time">等待数据</time></div>
             <section class="chart-box" data-augmented-ui="tl-clip tr-clip br-clip bl-clip border">
-              <h3>加工温度趋势曲线（°C）</h3>
+              <h3>加工温度趋势曲线（°C，北京时间）</h3>
+              <div class="chart-insights" aria-label="当前曲线窗口统计">
+                <span class="chart-stat chart-stat-min">最低 <b class="chart-min">--.-</b>°C</span>
+                <span class="chart-stat chart-stat-avg">平均 <b class="chart-avg">--.-</b>°C</span>
+                <span class="chart-stat chart-stat-max">最高 <b class="chart-max">--.-</b>°C</span>
+                <span class="chart-trend">趋势：等待数据</span>
+              </div>
               <canvas class="temperature-chart" width="700" height="300" aria-label="测量点1加工温度趋势图"></canvas>
             </section>
           </div>
@@ -139,11 +166,31 @@
                   </span>
                   <div><div class="ambient-label">环境湿度</div><div class="ambient-value"><span class="sensor-humidity">--</span> <small class="unit-symbol notranslate" translate="no">%RH</small></div></div>
                 </div>
+                <div class="ambient-item battery-item">
+                  <span class="hex-icon" aria-hidden="true">
+                    <svg class="metric-icon battery-icon" viewBox="0 0 34 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+                      <rect x="2.5" y="5.5" width="25" height="13" rx="2" />
+                      <path d="M29 9h2.5v6H29z" />
+                      <rect x="4.5" y="7.5" width="21" height="9" rx="1" fill="rgba(80, 150, 180, .22)" stroke="none" />
+                      <rect class="battery-fill" x="4.5" y="7.5" width="0" height="9" rx="1" fill="currentColor" stroke="none" />
+                    </svg>
+                  </span>
+                  <div>
+                    <div class="ambient-label">设备电量</div>
+                    <div class="ambient-value battery-value"><span class="sensor-battery">--</span><small>% · <span class="sensor-battery-voltage">--V</span></small></div>
+                  </div>
+                </div>
               </div>
             </section>
             <div class="update-row" data-augmented-ui="tl-clip tr-clip br-clip bl-clip border"><span class="clock-icon" aria-hidden="true"></span><span>数据更新时间：</span><time class="sensor-time">等待数据</time></div>
             <section class="chart-box" data-augmented-ui="tl-clip tr-clip br-clip bl-clip border">
-              <h3>加工温度趋势曲线（°C）</h3>
+              <h3>加工温度趋势曲线（°C，北京时间）</h3>
+              <div class="chart-insights" aria-label="当前曲线窗口统计">
+                <span class="chart-stat chart-stat-min">最低 <b class="chart-min">--.-</b>°C</span>
+                <span class="chart-stat chart-stat-avg">平均 <b class="chart-avg">--.-</b>°C</span>
+                <span class="chart-stat chart-stat-max">最高 <b class="chart-max">--.-</b>°C</span>
+                <span class="chart-trend">趋势：等待数据</span>
+              </div>
               <canvas class="temperature-chart" width="700" height="300" aria-label="测量点2加工温度趋势图"></canvas>
             </section>
           </div>
@@ -199,10 +246,10 @@
         <form method="dialog" class="dialog-shell" id="exportForm">
           <div class="dialog-head"><div><small>HISTORY EXPORT</small><h2>导出历史数据</h2></div><button class="dialog-close" value="cancel" aria-label="关闭">×</button></div>
           <div class="dialog-body export-fields">
-            <label>开始时间<input id="exportStart" type="datetime-local" required /></label>
-            <label>结束时间<input id="exportEnd" type="datetime-local" required /></label>
+            <label>开始时间（北京时间）<input id="exportStart" type="datetime-local" required /></label>
+            <label>结束时间（北京时间）<input id="exportEnd" type="datetime-local" required /></label>
             <label>导出点位<select id="exportSensor"><option value="">全部点位</option><option value="1">测量点 1</option><option value="2">测量点 2</option></select></label>
-            <p>导出文件为 UTF-8 CSV，包含原始温度、校准温度、环境温湿度和设备信息。</p>
+            <p>导出文件为 UTF-8 CSV，包含原始温度、校准温度、环境温湿度和设备信息；时间统一为北京时间（UTC+8）。</p>
           </div>
           <div class="dialog-actions"><button value="cancel" class="secondary-action">取消</button><button id="confirmExportButton" value="default" class="primary-action">下载 CSV</button></div>
         </form>
@@ -211,9 +258,8 @@
       <div class="system-state" id="systemState"><span></span><b id="collectorState">正在连接监测系统</b></div>
       <footer class="tech-footer" aria-hidden="true"><i></i><i></i><i></i></footer>
     </main>
-    <script src="/vendor/three.min.js?v=0.160.0"></script>
-    <script src="/shaft-scene.js?v=20260902-1"></script>
-    <script src="/app.js?v=20260902-1"></script>
-    <script src="/layout-drag.js?v=20260902-2"></script>
+    <script defer src="/shaft-loader.js?v=20261029-1"></script>
+    <script defer src="/app.js?v=20261029-1"></script>
+    <script defer src="/layout-drag.js?v=20261026-8"></script>
   </body>
 </html>

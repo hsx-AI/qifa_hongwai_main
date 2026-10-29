@@ -46,8 +46,6 @@ collector_state = {
     "last_packet_type": None,
     "last_store_error": None,
 }
-
-
 def local_now_iso():
     return datetime.now(LOCAL_TZ).isoformat(timespec="milliseconds")
 
@@ -112,6 +110,7 @@ def init_db():
         ensure_column(conn, "readings", "ambient_temperature_c", "REAL")
         ensure_column(conn, "readings", "ambient_humidity_percent", "REAL")
         ensure_column(conn, "readings", "ambient_status", "TEXT")
+        ensure_column(conn, "readings", "battery_voltage_v", "REAL")
         ensure_column(conn, "readings", "raw_temperature_c", "REAL")
         conn.execute(
             "UPDATE readings SET raw_temperature_c = temperature_c WHERE raw_temperature_c IS NULL"
@@ -245,7 +244,7 @@ def latest_reading_for_sensor(conn, sensor_id):
         """
         SELECT ts, sensor_id, peer_mac, sequence, raw_temperature_c, temperature_c,
                ambient_temperature_c, ambient_humidity_percent, ambient_status,
-               status, ok_count, error_count
+                   battery_voltage_v, status, ok_count, error_count
         FROM readings
         WHERE sensor_id = ?
         ORDER BY ts DESC
@@ -307,6 +306,15 @@ def store_sensor_packet(packet):
         if ambient_humidity is not None and not math.isfinite(ambient_humidity):
             ambient_humidity = None
 
+    battery_voltage = packet.get("battery_voltage_v")
+    if battery_voltage is not None:
+        try:
+            battery_voltage = float(battery_voltage)
+        except (TypeError, ValueError):
+            battery_voltage = None
+        if battery_voltage is not None and not math.isfinite(battery_voltage):
+            battery_voltage = None
+
     peer_mac = str(packet.get("mac") or packet.get("peer") or "unknown")
     sensor_id = int(packet.get("sensor_id", 0))
     if sensor_id not in SENSOR_IDS:
@@ -327,9 +335,9 @@ def store_sensor_packet(packet):
             """
             INSERT INTO readings
               (ts, sensor_id, peer_mac, sequence, raw_temperature_c, temperature_c, status,
-               ambient_temperature_c, ambient_humidity_percent, ambient_status,
+               ambient_temperature_c, ambient_humidity_percent, ambient_status, battery_voltage_v,
                ok_count, error_count, raw_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 local_now_iso(),
@@ -342,6 +350,7 @@ def store_sensor_packet(packet):
                 ambient_temperature,
                 ambient_humidity,
                 ambient_status,
+                battery_voltage,
                 ok_count,
                 error_count,
                 json.dumps(packet, ensure_ascii=False),
@@ -438,6 +447,7 @@ def simulator_worker():
             "base_temp": 24.5,
             "base_ambient": 22.8,
             "base_humidity": 45.0,
+            "battery_voltage": 3.92,
             "phase": 0.0,
         },
         2: {
@@ -445,6 +455,7 @@ def simulator_worker():
             "base_temp": 26.2,
             "base_ambient": 23.4,
             "base_humidity": 48.0,
+            "battery_voltage": 3.68,
             "phase": 1.7,
         },
     }
@@ -465,6 +476,7 @@ def simulator_worker():
                 + math.sin(sequence / 13 + phase) * 0.6,
                 "ambient_humidity_percent": profile["base_humidity"]
                 + math.sin(sequence / 17 + phase) * 5.0,
+                "battery_voltage_v": profile["battery_voltage"],
                 "status": "OK",
                 "ambient_status": "OK",
                 "ok": sequence,
@@ -481,34 +493,41 @@ def index():
 
 @app.route("/api/status")
 def api_status():
+    # 轻量轮询只查询页面实时显示所需字段，避免重复扫描串口及统计整张历史表。
+    brief = request.args.get("brief") == "1"
     with connect_db() as conn:
         latest_by_sensor = {
             sensor_id: latest_reading_for_sensor(conn, sensor_id)
             for sensor_id in SENSOR_IDS
         }
-        row = conn.execute(
-            """
-            SELECT ts, sensor_id, peer_mac, sequence, raw_temperature_c, temperature_c,
-                   ambient_temperature_c, ambient_humidity_percent, ambient_status,
-                   status, ok_count, error_count
-            FROM readings
-            ORDER BY ts DESC
-            LIMIT 1
-            """
-        ).fetchone()
-        total = conn.execute("SELECT COUNT(*) AS total FROM readings").fetchone()["total"]
+        if not brief:
+            row = conn.execute(
+                """
+                SELECT ts, sensor_id, peer_mac, sequence, raw_temperature_c, temperature_c,
+                       ambient_temperature_c, ambient_humidity_percent, ambient_status,
+                       battery_voltage_v, status, ok_count, error_count
+                FROM readings
+                ORDER BY ts DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            total = conn.execute("SELECT COUNT(*) AS total FROM readings").fetchone()["total"]
 
-    return jsonify(
-        {
-            "collector": get_state(),
-            "latest": dict(row) if row else None,
-            "latest_by_sensor": latest_by_sensor,
-            "sensor_ids": list(SENSOR_IDS),
-            "total_readings": total,
-            "ports": list_serial_ports(),
-            "sensor_configs": get_sensor_configs(),
-        }
-    )
+    payload = {
+        "collector": get_state(),
+        "latest_by_sensor": latest_by_sensor,
+        "sensor_ids": list(SENSOR_IDS),
+    }
+    if not brief:
+        payload.update(
+            {
+                "latest": dict(row) if row else None,
+                "total_readings": total,
+                "ports": list_serial_ports(),
+                "sensor_configs": get_sensor_configs(),
+            }
+        )
+    return jsonify(payload)
 
 
 @app.route("/api/config", methods=["GET", "POST"])
@@ -696,11 +715,14 @@ def api_export():
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(
-        ["时间", "点位编号", "点位名称", "原始温度(°C)", "校准温度(°C)",
+        ["时间（北京时间 UTC+8）", "点位编号", "点位名称", "原始温度(°C)", "校准温度(°C)",
          "环境温度(°C)", "环境湿度(%RH)", "状态", "MAC", "序号"]
     )
     for row in rows:
-        writer.writerow([row[key] for key in row.keys()])
+        exported = [row[key] for key in row.keys()]
+        timestamp = datetime.fromisoformat(exported[0]).astimezone(LOCAL_TZ)
+        exported[0] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        writer.writerow(exported)
     filename = f"temperature_history_{start_dt:%Y%m%d_%H%M}_{end_dt:%Y%m%d_%H%M}.csv"
     return Response(
         "\ufeff" + output.getvalue(),

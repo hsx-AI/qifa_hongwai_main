@@ -9,7 +9,7 @@ constexpr uint8_t kEspNowChannel = 6;
 constexpr uint32_t kSerialBaud = 115200;
 constexpr uint32_t kHeartbeatIntervalMs = 5000;
 constexpr uint16_t kPacketMagic = 0x5148;  // QH
-constexpr uint8_t kPacketVersion = 2;
+constexpr uint8_t kPacketVersion = 3;
 
 struct __attribute__((packed)) SensorPacket {
   uint16_t magic;
@@ -24,11 +24,13 @@ struct __attribute__((packed)) SensorPacket {
   uint8_t ambientStatusCode;
   uint32_t okCount;
   uint32_t errorCount;
+  float batteryVoltageV;
 };
 
 float lastTemperature = NAN;
 float lastAmbientTemperature = NAN;
 float lastAmbientHumidity = NAN;
+float lastBatteryVoltage = NAN;
 uint8_t lastSensorId = 0;
 uint32_t lastSequence = 0;
 uint32_t lastReceiveMs = 0;
@@ -100,6 +102,12 @@ void printJsonPacket(const SensorPacket &packet, const uint8_t *mac) {
   } else {
     Serial.print(packet.ambientHumidityPercent, 2);
   }
+  Serial.print(",\"battery_voltage_v\":");
+  if (isnan(packet.batteryVoltageV)) {
+    Serial.print("null");
+  } else {
+    Serial.print(packet.batteryVoltageV, 3);
+  }
   Serial.print(",\"status\":\"");
   Serial.print(statusText(packet.statusCode));
   Serial.print("\",\"ambient_status\":\"");
@@ -146,6 +154,12 @@ void printStatus() {
   } else {
     Serial.print(lastAmbientHumidity, 2);
   }
+  Serial.print(",\"battery_voltage_v\":");
+  if (isnan(lastBatteryVoltage)) {
+    Serial.print("null");
+  } else {
+    Serial.print(lastBatteryVoltage, 3);
+  }
   Serial.print(",\"status\":\"");
   Serial.print(lastStatus);
   Serial.print("\",\"received\":");
@@ -182,6 +196,7 @@ void onDataReceived(const uint8_t *mac, const uint8_t *data, int length) {
   lastTemperature = packet.temperatureC;
   lastAmbientTemperature = packet.ambientTemperatureC;
   lastAmbientHumidity = packet.ambientHumidityPercent;
+  lastBatteryVoltage = packet.batteryVoltageV;
   lastStatus = statusText(packet.statusCode);
   lastReceiveMs = millis();
   ++receivedCount;
