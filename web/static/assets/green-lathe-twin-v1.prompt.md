@@ -1,0 +1,7 @@
+# 绿色卧车场景贴图 v1
+
+生成方式：内置 image_gen。两张现场参考图仅用于设备构成、机床绿色和金属表面参考。
+
+最终提示词：
+
+Use case: stylized-concept. Asset type: wide panoramic background plate for an industrial temperature-monitoring dashboard, with all UI text, gauges, data cards and markers to be added later in HTML. Use the first reference image for the full-scale horizontal heavy lathe composition, long shaft and workshop proportions. Use the second reference image for the actual machine's deep industrial green paint, polished steel stepped turbine shaft, lathe headstock and close-up industrial material details. Create a coherent wide 16:9 cinematic digital-twin style scene: a massive GREEN horizontal lathe holding a long bright machined silver rotor/shaft, spanning most of the image width across the central band, seen from a slightly elevated front three-quarter viewpoint, realistic factory setting receding into darkness. A few restrained cyan luminous technical edge highlights and subtle floor grid / scan ambience suggest live instrumentation while the green machine and metallic shaft stay photorealistic and recognizable. The shaft must be visually continuous, mechanically plausible and dominant. Leave the top 12% dark and uncluttered for the app title, and leave the bottom 35% fairly dark and low-contrast for two overlaid live data panels. No people, no labels, no text, no numbers, no control panels, no graphs, no logos, no watermark. This is a background plate, not a finished UI screenshot.

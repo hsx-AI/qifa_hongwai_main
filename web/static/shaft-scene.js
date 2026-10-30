@@ -1,4 +1,4 @@
-const stage = document.querySelector("#shaftStage");
+const stage = document.querySelector("#shaftModel");
 const canvas = document.querySelector("#shaftScene");
 
 if (stage && canvas && window.THREE) {
@@ -15,6 +15,7 @@ if (stage && canvas && window.THREE) {
     canvas,
     alpha: true,
     antialias: true,
+    preserveDrawingBuffer: true,
     powerPreference: "high-performance",
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1));
@@ -96,11 +97,11 @@ if (stage && canvas && window.THREE) {
   const bodyMaterial = new THREE.MeshStandardMaterial({
     color: 0x1478bd,
     emissive: 0x07549a,
-    emissiveIntensity: 1.08,
+    emissiveIntensity: 0.45,
     metalness: 0.78,
     roughness: 0.24,
     transparent: true,
-    opacity: 0.78,
+    opacity: 0.48,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
@@ -125,7 +126,7 @@ if (stage && canvas && window.THREE) {
   const cyanLine = new THREE.LineBasicMaterial({
     color: 0x7bdfff,
     transparent: true,
-    opacity: 0.58,
+    opacity: 0.38,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
@@ -195,7 +196,7 @@ if (stage && canvas && window.THREE) {
   const edgeMaterial = new THREE.MeshBasicMaterial({
     color: 0x63e1ff,
     transparent: true,
-    opacity: 0.72,
+    opacity: 0.42,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
@@ -274,6 +275,8 @@ if (stage && canvas && window.THREE) {
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.position.z = Math.max(18, 68 / camera.aspect);
+    scene.fog.density = 0.6 / camera.position.z;
+    camera.lookAt(0, -0.15, 0);
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
     stage.dataset.sceneState = "ready";

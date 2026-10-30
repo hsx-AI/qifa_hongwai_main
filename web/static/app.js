@@ -1,4 +1,16 @@
 const SENSOR_IDS = [1, 2];
+const SENSOR_OFFLINE_AFTER_MS = 80_000;
+let monitoringServiceAvailable = false;
+let lastCollectorError = null;
+function sensorConnection(latest, serviceAvailable = monitoringServiceAvailable, now = Date.now()) {
+  if (!serviceAvailable) return { live: false, label: "监测服务断开" };
+  if (!latest) return { live: false, label: "未收到数据" };
+  const age = now - parseTs(latest.ts);
+  if (!Number.isFinite(age) || age > SENSOR_OFFLINE_AFTER_MS || age < -5000) {
+    return { live: false, label: "设备失联" };
+  }
+  return { live: true, label: latest.status === "OK" ? "在线" : "测温异常" };
+}
 const WINDOW_VALUES = [600, 1800, 3600, 14400, 86400, 604800];
 let activeWindow = 1800;
 const lastReadings = { 1: [], 2: [] };
@@ -35,14 +47,14 @@ function formatTimestamp(ts) {
 }
 
 /**
- * 按 3.5V 为零电量、4.2V 为满电计算百分比，并将有效电压限制在该范围内。
+ * 按 3.35V 为零电量、4.0V 为满电计算百分比，并将有效电压限制在该范围内。
  * 缺失或非数字电压返回 null，供页面显示为未知，而不是误报为 0%。
  */
 function calculateBatteryPercent(voltage) {
   if (voltage === null || voltage === undefined || voltage === "") return null;
   const numeric = Number(voltage);
   if (!Number.isFinite(numeric)) return null;
-  return Math.round(Math.max(0, Math.min(100, ((numeric - 3.5) / 0.7) * 100)));
+  return Math.round(Math.max(0, Math.min(100, ((numeric - 3.35) / (4.0 - 3.35)) * 100)));
 }
 
 function resizeCanvas(canvas, context) {
@@ -63,7 +75,8 @@ function drawChart(canvas, readings) {
   const { width, height } = resizeCanvas(canvas, ctx);
   ctx.clearRect(0, 0, width, height);
 
-  const pad = { left: 52, right: 16, top: 18, bottom: 36 };
+  const compact = height < 140;
+  const pad = { left: compact ? 40 : 52, right: 20, top: compact ? 12 : 18, bottom: compact ? 24 : 36 };
   const plotWidth = Math.max(1, width - pad.left - pad.right);
   const plotHeight = Math.max(1, height - pad.top - pad.bottom);
   const now = Date.now();
@@ -102,7 +115,10 @@ function drawChart(canvas, readings) {
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
   const rowCount = Math.max(1, Math.round((maxTemp - minTemp) / tempStep));
+  const rowStride = Math.max(1, Math.ceil(rowCount / Math.max(1, Math.floor(plotHeight / 22))));
   for (let row = 0; row <= rowCount; row += 1) {
+    if (row % rowStride !== 0 && row !== rowCount) continue;
+    if (row !== rowCount && row > 0 && (rowCount - row) * plotHeight / rowCount < 18) continue;
     const value = maxTemp - tempStep * row;
     const y = pad.top + (plotHeight / rowCount) * row;
     ctx.strokeStyle = "rgba(112, 165, 196, .22)";
@@ -246,10 +262,27 @@ function calculateTrend(readings) {
   return `趋势：${change > 0 ? "上升" : "下降"} ${Math.abs(change).toFixed(1)}°C`;
 }
 
-function renderStation(sensorId, latest, readings, stats) {
+function renderLiveState(sensorId, latest) {
   const station = getStation(sensorId);
   if (!station) return;
-  station.querySelector(".sensor-temp").textContent = formatNumber(latest?.temperature_c);
+  const connection = sensorConnection(latest);
+  const lastTimestamp = latest?.ts;
+  const hotspot = document.querySelector(`[data-hotspot-sensor="${sensorId}"]`);
+  station.classList.toggle("offline", !connection.live);
+  hotspot?.classList.toggle("offline", !connection.live);
+  station.dataset.connection = connection.label;
+  let badge = station.querySelector(".sensor-connectivity");
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.className = "sensor-connectivity";
+    badge.setAttribute("role", "status");
+    station.querySelector(".station-cap").append(badge);
+  }
+  badge.textContent = connection.label;
+  const validTemperature = connection.live && latest?.status === "OK";
+  const displayLatest = connection.live ? latest : null;
+  latest = displayLatest;
+  station.querySelector(".sensor-temp").textContent = formatNumber(validTemperature ? latest?.temperature_c : null);
   station.querySelector(".sensor-ambient-temp").textContent = formatNumber(latest?.ambient_temperature_c);
   station.querySelector(".sensor-humidity").textContent = formatNumber(latest?.ambient_humidity_percent, "--").replace(".0", "");
   const batteryPercent = calculateBatteryPercent(latest?.battery_voltage_v);
@@ -263,13 +296,23 @@ function renderStation(sensorId, latest, readings, stats) {
   batteryItem.classList.toggle("low", batteryPercent !== null && batteryPercent > 0 && batteryPercent <= 15);
   batteryItem.classList.toggle("depleted", batteryPercent === 0);
   batteryFill.setAttribute("width", batteryPercent === null ? "0" : (batteryPercent * 0.21).toFixed(2));
-  station.querySelector(".sensor-time").textContent = formatTimestamp(latest?.ts);
+  station.querySelector(".sensor-time").textContent = formatTimestamp(lastTimestamp);
   const config = currentConfig?.sensors?.find(item => Number(item.sensor_id) === sensorId);
   const sensorName = config?.name || `测量点 ${sensorId}`;
   station.querySelector(".sensor-name").textContent = sensorName;
   const hotspotName = document.querySelector(`[data-hotspot-sensor="${sensorId}"] .hotspot-name`);
   if (hotspotName) hotspotName.textContent = sensorName;
-  station.classList.toggle("offline", !latest);
+  const hotspotReading = document.querySelector(`[data-hotspot-sensor="${sensorId}"] .hotspot-reading`);
+  if (hotspotReading) hotspotReading.textContent = connection.live ? `${formatNumber(validTemperature ? latest?.temperature_c : null)} °C` : connection.label;
+  const overviewReading = document.querySelector(`[data-overview-reading="${sensorId}"]`);
+  const overviewName = document.querySelector(`[data-overview-name="${sensorId}"]`);
+  if (overviewReading) overviewReading.textContent = formatNumber(validTemperature ? latest?.temperature_c : null);
+  if (overviewName) overviewName.textContent = sensorName;
+}
+
+function renderStation(sensorId, latest, readings, stats) {
+  renderLiveState(sensorId, latest);
+  const station = getStation(sensorId);
   station.querySelector(".chart-min").textContent = formatNumber(stats?.min_temp);
   station.querySelector(".chart-avg").textContent = formatNumber(stats?.avg_temp);
   station.querySelector(".chart-max").textContent = formatNumber(stats?.max_temp);
@@ -284,8 +327,8 @@ async function refresh() {
   refreshInProgress = true;
   try {
     const [statusResponse, readingsResponse] = await Promise.all([
-      fetch("/api/status?brief=1"),
-      fetch(`/api/readings?window=${activeWindow}`),
+      fetch("/api/status?brief=1", { signal: AbortSignal.timeout(8000) }),
+      fetch(`/api/readings?window=${activeWindow}`, { signal: AbortSignal.timeout(8000) }),
     ]);
     if (!statusResponse.ok || !readingsResponse.ok) throw new Error("接口暂不可用");
     const status = await statusResponse.json();
@@ -295,6 +338,7 @@ async function refresh() {
       const sensors = Object.values(payload.sensor_configs);
       currentConfig = { ...(currentConfig || {}), sensors };
     }
+    monitoringServiceAvailable = true;
     SENSOR_IDS.forEach(sensorId => renderStation(
       sensorId,
       status.latest_by_sensor?.[sensorId],
@@ -303,15 +347,13 @@ async function refresh() {
     ));
     SENSOR_IDS.forEach(sensorId => { latestBySensor[sensorId] = status.latest_by_sensor?.[sensorId] || null; });
 
-    const onlineCount = SENSOR_IDS.filter(id => status.latest_by_sensor?.[id]?.status === "OK").length;
-    const state = document.getElementById("systemState");
-    state.classList.toggle("online", onlineCount > 0 && !status.collector?.last_error);
-    document.getElementById("collectorState").textContent = status.collector?.last_error
-      ? "采集连接异常"
-      : onlineCount > 0 ? `${onlineCount}/${SENSOR_IDS.length} 测点在线` : "等待测点数据";
+    lastCollectorError = status.collector?.last_error;
+    updateConnectionSummary(lastCollectorError);
   } catch (error) {
-    document.getElementById("collectorState").textContent = "监测服务连接中";
-    SENSOR_IDS.forEach(sensorId => drawChart(getStation(sensorId).querySelector("canvas"), lastReadings[sensorId]));
+    monitoringServiceAvailable = false;
+    document.getElementById("systemState").classList.remove("online");
+    document.getElementById("collectorState").textContent = "监测服务断开";
+    SENSOR_IDS.forEach(sensorId => renderLiveState(sensorId, latestBySensor[sensorId]));
   } finally {
     refreshInProgress = false;
   }
@@ -514,3 +556,19 @@ document.getElementById("exportForm").addEventListener("submit", event => {
 
 refresh();
 setInterval(refresh, 2000);
+
+function updateConnectionSummary(collectorError) {
+  const onlineCount = SENSOR_IDS.filter(id => sensorConnection(latestBySensor[id]).live).length;
+  const state = document.getElementById("systemState");
+  state.classList.toggle("online", monitoringServiceAvailable && onlineCount === SENSOR_IDS.length && !collectorError);
+  document.getElementById("collectorState").textContent = !monitoringServiceAvailable
+    ? "监测服务断开"
+    : collectorError ? "采集连接异常"
+      : onlineCount === SENSOR_IDS.length ? "2/2 测点在线"
+        : onlineCount > 0 ? `${onlineCount}/2 测点在线 · 部分设备失联`
+          : SENSOR_IDS.some(id => latestBySensor[id]) ? "全部设备失联" : "等待测点数据";
+}
+setInterval(() => {
+  SENSOR_IDS.forEach(id => renderLiveState(id, latestBySensor[id]));
+  updateConnectionSummary(lastCollectorError);
+}, 1000);

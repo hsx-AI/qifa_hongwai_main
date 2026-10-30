@@ -1,58 +1,36 @@
-const shaftStage = document.querySelector("#shaftStage");
-
-if (shaftStage) {
-  let loadStarted = false;
-  let pageLoaded = document.readyState === "complete";
-  let stageVisible = false;
-  const statusText = shaftStage.querySelector(".shaft-status span");
-
-  const loadSceneScript = src => new Promise((resolve, reject) => {
-    const script = document.createElement("script");
+(() => {
+  const screen = document.querySelector('.texture-dashboard');
+  const mount = document.querySelector('#shaftModel');
+  const select = document.querySelector('#sceneModeSelect');
+  if (!screen || !mount || !select) return;
+  const status = mount.querySelector('.model-status');
+  let loading;
+  const loadScript = src => new Promise((resolve, reject) => {
+    const script = document.createElement('script');
     script.src = src;
     script.onload = resolve;
-    script.onerror = () => reject(new Error(`转轴脚本加载失败：${src}`));
+    script.onerror = () => reject(new Error('模型脚本加载失败'));
     document.head.appendChild(script);
   });
-
-  const loadScene = async () => {
-    if (loadStarted) return;
-    loadStarted = true;
-    statusText.textContent = "正在加载转轴模型";
-
+  const load = async () => {
     try {
-      await loadSceneScript("/vendor/three.min.js?v=0.160.0");
-      await loadSceneScript("/shaft-scene.js?v=20261029-4");
+      if (!window.THREE) await loadScript('/vendor/three.min.js?v=0.160.0');
+      await loadScript('/shaft-scene.js?v=20261030-2');
+      if (mount.dataset.sceneState !== 'ready') throw new Error('三维渲染不可用');
+      status.hidden = true;
     } catch (error) {
+      status.hidden = false;
+      status.textContent = '三维模型加载失败，请切换贴图场景继续监测';
       console.error(error);
-      shaftStage.dataset.sceneState = "error";
-      statusText.textContent = "转轴模型加载失败，温度监测仍可使用";
     }
   };
-
-  const scheduleLoad = () => {
-    if (loadStarted || !pageLoaded || !stageVisible) return;
-    if ("requestIdleCallback" in window) {
-      window.requestIdleCallback(loadScene, { timeout: 1200 });
-    } else {
-      window.setTimeout(loadScene, 250);
-    }
+  const applySceneMode = () => {
+    const model = select.value === 'model';
+    screen.classList.toggle('model-scene-active', model);
+    mount.hidden = !model;
+    if (model && !loading) loading = load();
+    document.dispatchEvent(new Event('twin-scene-ready'));
   };
-
-  window.addEventListener("load", () => {
-    pageLoaded = true;
-    scheduleLoad();
-  }, { once: true });
-
-  if ("IntersectionObserver" in window) {
-    const observer = new IntersectionObserver(entries => {
-      if (!entries.some(entry => entry.isIntersecting)) return;
-      observer.disconnect();
-      stageVisible = true;
-      scheduleLoad();
-    }, { rootMargin: "240px 0px" });
-    observer.observe(shaftStage);
-  } else {
-    stageVisible = true;
-    scheduleLoad();
-  }
-}
+  select.addEventListener('change', applySceneMode);
+  applySceneMode();
+})();

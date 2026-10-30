@@ -1,0 +1,131 @@
+/* Equipment workspace inspired by asset-monitoring / digital-twin consoles. */
+.sensor-connectivity { margin-left: auto; padding: 3px 7px; border-radius: 4px; background: #1c3d39; color: #8cdbcb; font-size: 10px; font-weight: 400; white-space: nowrap; }
+.texture-dashboard .sensor-station.offline { opacity: 1; }
+.texture-dashboard .sensor-station.offline .sensor-connectivity { background: #482e25; color: #ffc59b; }
+.texture-dashboard .sensor-station.offline[data-sensor-id] .station-cap::before { background: #efab6a; box-shadow: none; }
+.texture-dashboard .shaft-hotspot.offline .hotspot-pulse { background: #f5b179; border-color: #f5b179; box-shadow: 0 0 0 5px #e9a46e20; }
+.texture-dashboard .shaft-hotspot.offline .hotspot-tag { border-color: #bc835c; }
+.texture-dashboard .shaft-hotspot.offline .hotspot-reading { color: #ffc59b; font-size: 13px; }
+.texture-dashboard .station-cap:has(.sensor-connectivity)::after { display: none; }
+@media (max-width: 900px) { .texture-dashboard .station-cap { display: flex; align-items: center; justify-content: space-between; } }
+:root { --monitor-font: "Microsoft YaHei UI", "Microsoft YaHei", "YouYuan", "PingFang SC", sans-serif; }
+body,
+.texture-dashboard,
+.texture-dashboard button,
+.texture-dashboard select,
+.texture-dashboard input,
+.texture-dashboard h1,
+.texture-dashboard h2,
+.texture-dashboard h3,
+.texture-dashboard .temperature span,
+.texture-dashboard .ambient-value,
+.texture-dashboard .ambient-value small,
+.texture-dashboard .update-row time,
+.texture-dashboard .hotspot-reading,
+.texture-dashboard .scene-kicker,
+.texture-dashboard .summary-label { font-family: var(--monitor-font); }
+.texture-dashboard .temperature span,
+.texture-dashboard .ambient-value,
+.texture-dashboard .hotspot-reading { font-variant-numeric: tabular-nums; }
+.texture-dashboard .hero h1 { font-weight: 500; text-shadow: none; }
+.workspace-eyebrow { display: block; color: #7d929f; font-size: 10px; font-weight: 400; letter-spacing: .12em; margin-bottom: 7px; }
+.texture-dashboard .viewport-frame,
+.texture-dashboard .hero-wing,
+.texture-dashboard .frame-rail { display: none; }
+.texture-dashboard .station-frame::before,
+.texture-dashboard .station-frame::after,
+.texture-dashboard .reading-panel::before,
+.texture-dashboard .reading-panel::after,
+.texture-dashboard .chart-box::before,
+.texture-dashboard .chart-box::after,
+.texture-dashboard .update-row::before,
+.texture-dashboard .update-row::after { display: none; }
+.texture-dashboard .station-cap { background: #14212d; }
+.texture-dashboard .station-frame { background: #101c28; border-color: #263745; box-shadow: none; border-radius: 8px; }
+.texture-dashboard .hotspot-pulse { width: 12px; height: 12px; border: 3px solid #6edcd5; box-shadow: 0 0 0 5px #6edcd51c; animation: none; }
+.texture-dashboard .hotspot-tag { background: #101f2ded; border: 1px solid #4d939d; border-radius: 5px; box-shadow: 0 5px 18px #0004; }
+.texture-dashboard .hotspot-reading { font-size: 18px; color: #e5f6f5; }
+.texture-dashboard .measurement-links { opacity: .25; }
+.texture-dashboard .measurement-links line { filter: none; stroke-dasharray: 4 5; }
+.workspace-summary { display: none; }
+.texture-dashboard .shaft-model::before { opacity: .25; filter: brightness(.65) saturate(.55); }
+.texture-dashboard .shaft-model { background: radial-gradient(ellipse at 50% 55%, #102d42, #0c1723 80%); }
+.texture-dashboard .twin-scan-light { opacity: .35; }
+.texture-dashboard .chart-stat,
+.texture-dashboard .chart-trend { border: 0; background: #192a37; border-radius: 3px; }
+.texture-dashboard .temperature span { color: #e5f3f5; text-shadow: none; }
+.texture-dashboard .sensor-station[data-sensor-id="2"] .temperature span { color: #a6c9fc; }
+.texture-dashboard .sensor-station[data-sensor-id="2"] .station-cap::before { background: #83adf0; box-shadow: none; }
+.texture-dashboard .station-cap::before { box-shadow: none; }
+.texture-dashboard .scene-caption { padding: 10px 13px; background: #101c28cf; border: 1px solid #34465480; border-radius: 6px; }
+.texture-dashboard .scene-caption strong { font-size: 14px; letter-spacing: .02em; }
+.texture-dashboard .scene-note { font-size: 10px; }
+
+@media (min-width: 1101px) {
+  .texture-dashboard { --rail-width: clamp(350px, 29vw, 440px); height: 100vh; min-height: 720px; padding: 0 24px; background: #0a131e; }
+  .texture-dashboard .hero { height: 88px; margin: 0; border-bottom: 1px solid #263442; }
+  .texture-dashboard .hero h1 { font-size: clamp(20px, 1.65vw, 29px); font-weight: 500; letter-spacing: .04em; }
+  .texture-dashboard .dashboard-controls { top: 102px; left: 24px; right: 24px; justify-content: flex-end; height: 38px; padding: 0; background: none; border: 0; backdrop-filter: none; }
+  .texture-dashboard .dashboard-controls button,
+  .texture-dashboard .dashboard-controls select { height: 31px; border: 1px solid #314354; background: #142331; border-radius: 5px; color: #c2d2df; }
+  .texture-dashboard #sceneModeSelect { margin-right: auto; max-width: 135px; width: 135px; }
+  .texture-dashboard .shaft-stage { top: 154px; left: 24px; right: calc(var(--rail-width) + 42px); bottom: 154px; height: auto; border: 1px solid #293b4a; border-radius: 10px; background: #0e1b28; }
+  .texture-dashboard .twin-plane { top: 50%; transform: translateY(-50%); }
+  .texture-dashboard .twin-scene-image { opacity: .85; }
+  .texture-dashboard .scene-caption { top: 16px; left: 16px; }
+  .texture-dashboard .sensor-grid { top: 154px; right: 24px; left: auto; bottom: 46px; width: var(--rail-width); height: auto; display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: repeat(2,minmax(0,1fr)); gap: 14px; }
+  .texture-dashboard .sensor-station { height: 100%; min-height: 0; }
+  .texture-dashboard .station-cap { height: 35px; border-radius: 8px 8px 0 0; padding: 0 14px; }
+  .texture-dashboard .station-cap h2 { font-size: 13px; }
+  .texture-dashboard .station-frame { height: 100%; padding: 40px 13px 10px; }
+  .texture-dashboard .reading-panel { flex: 0 0 85px; grid-template-columns: 41% 59%; }
+  .texture-dashboard .temperature { margin-top: 9px; }
+  .texture-dashboard .temperature span { font-size: 42px; }
+  .texture-dashboard .temperature small { font-size: 14px; }
+  .texture-dashboard .ambient-readings { padding-left: 8px; }
+  .texture-dashboard .ambient-item { gap: 4px; }
+  .texture-dashboard .ambient-label { font-size: 10px; }
+  .texture-dashboard .ambient-value { font-size: 14px; }
+  .texture-dashboard .ambient-value small { font-size: 9px; }
+  .texture-dashboard .update-row { flex: 0 0 25px; font-size: 9px; gap: 2px; }
+  .texture-dashboard .update-row time { font-size: 9px; }
+  .texture-dashboard .chart-box h3 { font-size: 10px; letter-spacing: 0; }
+  .texture-dashboard .chart-insights { flex-wrap: wrap; font-size: 9px; gap: 4px; }
+  .texture-dashboard .chart-stat,
+  .texture-dashboard .chart-trend { padding: 2px 4px; }
+  .texture-dashboard .system-state { top: 36px; bottom: auto; right: 26px; color: #9baebc; }
+  .texture-dashboard .team-watermark { left: 24px; bottom: 15px; transform: none; display: flex; align-items: center; gap: 12px; }
+  .texture-dashboard .team-watermark span,
+  .texture-dashboard .team-watermark strong { font-size: 10px; color: #6d8394; }
+  .workspace-summary { position: absolute; left: 24px; right: calc(var(--rail-width) + 42px); bottom: 46px; height: 94px; display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 1px; border: 1px solid #293b4a; border-radius: 8px; background: #101c28; overflow: hidden; }
+  .workspace-summary > div { padding: 12px 16px; display: grid; align-content: center; gap: 6px; min-width: 0; }
+  .workspace-summary > div + div { border-left: 1px solid #293b4a; }
+  .summary-label { color: #758d9f; font: 9px 'Segoe UI', sans-serif; letter-spacing: .1em; }
+  .workspace-summary strong { font-size: 12px; color: #d4e4ed; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .workspace-summary small { font-size: 10px; color: #879fad; }
+  .workspace-summary b { font-size: 14px; color: #8adad1; font-weight: 500; }
+  .texture-dashboard.scene-expanded .shaft-stage { right: 24px; bottom: 46px; }
+  .texture-dashboard.scene-expanded .workspace-summary { display: none; }
+  .model-scene-active .shaft-stage .twin-plane { transform: none; }
+}
+@media (max-width: 1100px) {
+  .workspace-eyebrow { font-size: 9px; }
+  .texture-dashboard .hero h1 { font-size: clamp(18px, 3.4vw, 28px); }
+  .texture-dashboard .station-cap { border-radius: 6px 6px 0 0; }
+}
+@media (min-width: 1101px) and (max-height: 800px) {
+  .texture-dashboard .station-cap { height: 30px; }
+  .texture-dashboard .station-frame { padding-top: 34px; padding-bottom: 8px; }
+  .texture-dashboard .reading-panel { flex-basis: 64px; }
+  .texture-dashboard .process-reading { padding-top: 2px; padding-bottom: 0; }
+  .texture-dashboard .temperature { margin-top: 5px; }
+  .texture-dashboard .temperature span { font-size: 34px; }
+  .texture-dashboard .ambient-item { min-height: 0; }
+  .texture-dashboard .hex-icon,
+  .texture-dashboard .battery-item .hex-icon { height: 18px; }
+  .texture-dashboard .ambient-value { line-height: 18px; }
+  .texture-dashboard .ambient-readings { margin: 0; }
+  .texture-dashboard .update-row { flex-basis: 20px; height: 20px; }
+  .texture-dashboard .chart-box { margin-top: 5px; }
+  .texture-dashboard .chart-box h3 { line-height: 14px; margin-bottom: 3px; }
+}

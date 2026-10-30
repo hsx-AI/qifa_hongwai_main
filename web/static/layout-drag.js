@@ -4,13 +4,16 @@
   const linkLayer = document.querySelector("#measurementLinks");
   if (!screen || !linkLayer) return;
 
-  const storageKey = "shaft-monitor-layout-v1";
+  const storageKey = screen.classList.contains("texture-dashboard") ? "shaft-monitor-workspace-layout-v2" : "shaft-monitor-layout-v1";
   const items = new Map();
   let savedLayout = {};
   try { savedLayout = JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch { savedLayout = {}; }
+  if (!savedLayout || typeof savedLayout !== "object" || Array.isArray(savedLayout)) savedLayout = {};
 
   const clamp = (value, minimum, maximum) => Math.min(Math.max(value, minimum), maximum);
-  const saveLayout = () => localStorage.setItem(storageKey, JSON.stringify(savedLayout));
+  const saveLayout = () => {
+    try { localStorage.setItem(storageKey, JSON.stringify(savedLayout)); } catch { /* 位置仍在当前页面生效。 */ }
+  };
 
   const register = ({ key, element, handle, bounds }) => {
     const state = { x: 0, y: 0 };
@@ -26,7 +29,7 @@
         : "";
     };
     apply();
-    items.set(key, { element, state, apply });
+    items.set(key, { element, state, apply, bounds });
 
     handle.title = "拖动调整位置，双击恢复默认位置";
     handle.addEventListener("pointerdown", event => {
@@ -72,12 +75,30 @@
       apply();
       updateLinks();
     });
+
+    if (handle === element) {
+      handle.addEventListener("keydown", event => {
+        if (!desktopQuery.matches) return;
+        const directions = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+        const direction = directions[event.key];
+        if (!direction) return;
+        event.preventDefault();
+        const limits = bounds(element.getBoundingClientRect(), state);
+        const step = event.shiftKey ? 20 : 5;
+        state.x = clamp(state.x + direction[0] * step, limits.minX, limits.maxX);
+        state.y = clamp(state.y + direction[1] * step, limits.minY, limits.maxY);
+        savedLayout[key] = { x: state.x / window.innerWidth, y: state.y / window.innerHeight };
+        saveLayout();
+        apply();
+        updateLinks();
+      });
+    }
   };
 
   const cardBounds = (rect, start) => ({
     minX: start.x + 14 - rect.left,
     maxX: start.x + window.innerWidth - 14 - rect.right,
-    minY: start.y + 124 - rect.top,
+    minY: start.y + (window.innerWidth > 1100 ? 154 : 124) - rect.top,
     maxY: start.y + window.innerHeight - 22 - rect.bottom,
   });
 
@@ -85,9 +106,9 @@
     const stageRect = document.querySelector("#shaftStage").getBoundingClientRect();
     return {
       minX: start.x + stageRect.left + 18 - rect.left,
-      maxX: start.x + stageRect.right - 98 - rect.right,
-      minY: start.y + stageRect.top + 48 - rect.top,
-      maxY: start.y + stageRect.bottom - 120 - rect.bottom,
+      maxX: start.x + stageRect.right - 175 - rect.right,
+      minY: start.y + stageRect.top + 72 - rect.top,
+      maxY: start.y + stageRect.bottom - 62 - rect.bottom,
     };
   };
 
@@ -102,6 +123,13 @@
 
   function updateLinks() {
     if (!desktopQuery.matches) return;
+    // Re-clamp restored positions after viewport or scene-mode changes.
+    items.forEach(item => {
+      const limits = item.bounds(item.element.getBoundingClientRect(), item.state);
+      item.state.x = clamp(item.state.x, limits.minX, Math.max(limits.minX, limits.maxX));
+      item.state.y = clamp(item.state.y, limits.minY, Math.max(limits.minY, limits.maxY));
+      item.apply();
+    });
     const screenRect = screen.getBoundingClientRect();
     ["1", "2"].forEach(sensorId => {
       const hotspot = document.querySelector(`[data-hotspot-sensor="${sensorId}"] .hotspot-pulse`);
@@ -138,6 +166,17 @@
   });
 
   if (document.fonts?.ready) document.fonts.ready.then(updateLinks);
+  document.querySelector("#resetLayoutButton")?.addEventListener("click", () => {
+    savedLayout = {};
+    saveLayout();
+    items.forEach(item => {
+      item.state.x = 0;
+      item.state.y = 0;
+      item.apply();
+    });
+    updateLinks();
+  });
+  document.addEventListener("twin-scene-ready", updateLinks);
   requestAnimationFrame(updateLinks);
   setTimeout(updateLinks, 300);
 })();

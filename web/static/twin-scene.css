@@ -1,0 +1,236 @@
+/* 贴图式设备组态：场景、交互点位和实时监测分别绘制。 */
+.shaft-model { position: absolute; inset: 0; z-index: 0; isolation: isolate; background: radial-gradient(ellipse at center, #07304b, #030d17 75%); }
+.shaft-model::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url('/assets/green-cnc-lathe-twin-v3.png') center 43% / cover no-repeat;
+  opacity: .38;
+  filter: brightness(.72) saturate(.75);
+  pointer-events: none;
+}
+.shaft-model[hidden] { display: none; }
+.shaft-model canvas { position: relative; z-index: 1; display: block; width: 100%; height: 100%; }
+.model-status { position: absolute; z-index: 2; top: 70%; left: 0; right: 0; text-align: center; color: #b4dce6; font-size: 12px; }
+.model-scene-active .twin-scene-image,
+.model-scene-active .twin-scan-light,
+.model-scene-active .twin-shade,
+.model-scene-active .shaft-status { visibility: hidden; }
+.model-scene-active .shaft-stage .twin-plane { z-index: 1; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; }
+.model-scene-active .shaft-hotspot-one { top: 43%; }
+.model-scene-active .shaft-hotspot-two { top: 49%; }
+.texture-dashboard .dashboard-controls #sceneModeSelect { max-width: 108px; }
+@media (min-width: 1151px) and (max-width: 1400px) {
+  .texture-dashboard .hero h1 { font-size: 25px; letter-spacing: .04em; }
+}
+.texture-dashboard { background: #030d17; isolation: isolate; }
+.texture-dashboard .viewport-frame { inset: 10px; opacity: .42; --aug-border-all: 1px; }
+.texture-dashboard .corner-code { opacity: .35; }
+.texture-dashboard .edge-ticks { display: none; }
+.texture-dashboard .shaft-stage {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  background: #030d17;
+  mask-image: none;
+  -webkit-mask-image: none;
+  pointer-events: none;
+}
+.texture-dashboard .shaft-stage::before,
+.texture-dashboard .shaft-stage::after { display: none; }
+.twin-plane {
+  position: absolute;
+  top: max(0px, calc((100vh - 56.28vw) * .3));
+  left: 0;
+  width: 100%;
+  aspect-ratio: 1672 / 941;
+  isolation: isolate;
+}
+.twin-scene-image { display: block; width: 100%; height: 100%; object-fit: cover; }
+.twin-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2, 10, 18, .82), rgba(2, 10, 18, .08) 19%, transparent 44%, rgba(2, 10, 18, .08) 58%, rgba(2, 10, 18, .88) 100%);
+  pointer-events: none;
+}
+.twin-scan-light {
+  position: absolute;
+  z-index: 1;
+  inset: 24% 3% 34%;
+  overflow: hidden;
+  pointer-events: none;
+}
+.twin-scan-light::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -15%;
+  width: 10%;
+  background: linear-gradient(90deg, transparent, rgba(66, 232, 234, .08), rgba(105, 255, 255, .24), transparent);
+  transform: skewX(-15deg);
+  animation: twinScan 12s ease-in-out infinite;
+}
+@keyframes twinScan { 0%, 12% { left: -15%; opacity: 0; } 22% { opacity: 1; } 70% { left: 105%; opacity: 1; } 80%, 100% { left: 105%; opacity: 0; } }
+.scene-caption { position: absolute; z-index: 2; top: 136px; left: 36px; display: grid; gap: 7px; }
+.scene-kicker { color: #72b8bc; font: 10px "Segoe UI", sans-serif; letter-spacing: .2em; }
+.scene-caption strong { font-size: 18px; font-weight: 500; color: #edf9f8; letter-spacing: .1em; }
+.scene-note { display: flex; align-items: center; gap: 8px; color: #9bafb8; font-size: 11px; }
+.scene-note i { width: 3px; height: 3px; background: #7aafb4; border-radius: 50%; }
+
+.texture-dashboard .shaft-hotspot { z-index: 4; top: 40%; color: #e0ffff; pointer-events: auto; }
+.texture-dashboard .shaft-hotspot-one { left: 35%; right: auto; }
+.texture-dashboard .shaft-hotspot-two { left: 70%; right: auto; top: 46%; }
+.texture-dashboard .hotspot-pulse { width: 17px; height: 17px; border: 4px solid #80f9ed; background: #f0ffff; box-shadow: 0 0 0 7px rgba(68, 242, 222, .15), 0 0 24px #03cfc1; }
+.texture-dashboard .shaft-hotspot::after { display: none; }
+.hotspot-tag { position: absolute; top: -12px; left: 33px; display: grid; gap: 3px; min-width: 110px; padding: 8px 12px; border: 1px solid rgba(107, 232, 219, .54); border-left: 2px solid #71e8dc; background: rgba(3, 22, 29, .91); box-shadow: 0 6px 25px rgba(0, 0, 0, .35); border-radius: 2px; }
+.texture-dashboard .hotspot-name { position: static; width: auto; margin: 0; padding: 0; border: 0; background: none; clip-path: none; text-align: left; font-size: 11px; font-weight: 400; color: #b8d4d7; }
+.hotspot-reading { font: 600 19px "Segoe UI", Arial, sans-serif; font-variant-numeric: tabular-nums; color: #b7fff5; white-space: nowrap; }
+.texture-dashboard .shaft-hotspot:focus-visible { outline: 1px dashed #a5fff6; outline-offset: 9px; }
+.texture-dashboard .measurement-links { z-index: 3; opacity: .72; }
+.texture-dashboard .measurement-links line { stroke-width: 1; filter: drop-shadow(0 0 3px #2ce4d4); }
+.texture-dashboard .station-frame { backdrop-filter: blur(14px); }
+.texture-dashboard .system-state { opacity: 1; color: #94bdc2; right: 34px; bottom: 17px; font-size: 11px; }
+.texture-dashboard .system-state > span { width: 5px; height: 5px; }
+.texture-dashboard .team-watermark { bottom: 18px; padding: 0; min-width: 0; gap: 3px; opacity: .7; }
+.texture-dashboard .team-watermark::before,
+.texture-dashboard .team-watermark::after { display: none; }
+.texture-dashboard .team-watermark span { font-size: 9px; letter-spacing: .14em; }
+.texture-dashboard .team-watermark strong { font-size: 11px; letter-spacing: .08em; font-weight: 400; }
+.texture-dashboard .tech-footer { display: none; }
+
+@media (min-width: 901px) {
+  .texture-dashboard { --cards-height: clamp(310px, 35vh, 360px); height: 100vh; min-height: 640px; padding: 12px 32px 24px; background: #030d17; }
+  .texture-dashboard .shaft-stage { top: 90px; bottom: calc(var(--cards-height) + 58px); height: auto; border-top: 1px solid #18303b; border-bottom: 1px solid #18303b; }
+  .texture-dashboard .twin-plane { top: calc(50% - 24.2vw); }
+  .texture-dashboard .scene-caption { top: 16px; left: 32px; text-shadow: 0 2px 8px #030d17; }
+  .texture-dashboard .scene-kicker { display: none; }
+  .texture-dashboard .twin-shade { background: linear-gradient(180deg, rgba(2,10,18,.65), transparent 35%, transparent 75%, rgba(2,10,18,.75)); }
+  .texture-dashboard .hero { height: 76px; z-index: 6; justify-content: flex-start; margin: 0; }
+  .texture-dashboard .hero-title { width: auto; padding: 0; border: 0; filter: none; text-align: left; }
+  .texture-dashboard .hero-title::before,
+  .texture-dashboard .hero-title::after,
+  .texture-dashboard .hero-wing { display: none; }
+  .texture-dashboard h1 { font-size: clamp(24px, 2.15vw, 37px); font-weight: 600; letter-spacing: .1em; text-shadow: 0 1px 18px rgba(123, 224, 242, .24); }
+  .texture-dashboard .dashboard-controls { z-index: 7; top: 28px; right: 32px; padding: 5px; gap: 5px; border-color: rgba(135, 203, 203, .2); background: rgba(4, 20, 29, .86); box-shadow: none; opacity: 1; transform: none; border-radius: 3px; backdrop-filter: blur(10px); }
+  .texture-dashboard .dashboard-controls button,
+  .texture-dashboard .dashboard-controls select { height: 29px; border-color: rgba(120, 195, 196, .22); background: rgba(13, 40, 48, .7); color: #cee8e9; font-size: 12px; }
+  .texture-dashboard .sensor-grid { z-index: 5; left: 32px; right: 32px; bottom: 44px; height: var(--cards-height); min-height: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+  .texture-dashboard .sensor-station { padding-top: 0; min-height: 0; }
+  .texture-dashboard .station-cap { top: 0; left: 0; right: 0; height: 39px; display: flex; align-items: center; justify-content: flex-start; padding: 0 17px; border: 0; background: rgba(9, 39, 47, .93); --aug-l: 0px; --aug-r: 0px; --aug-border-all: 0px; filter: none; }
+  .texture-dashboard .station-cap::before { content: ""; flex: 0 0 5px; height: 5px; margin-right: 9px; border-radius: 50%; background: #7ce5cd; box-shadow: 0 0 8px rgba(113, 255, 210, .45); }
+  .texture-dashboard .station-cap h2 { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: .05em; }
+  .texture-dashboard .station-frame { min-height: 0; padding: 46px 14px 12px; border: 1px solid rgba(103, 186, 186, .34); border-radius: 3px; --aug-tl: 0px; --aug-tr: 0px; --aug-bl: 0px; --aug-br: 0px; --aug-border-all: 0px; --aug-inlay-all: 0px; background: linear-gradient(135deg, rgba(6, 28, 37, .93), rgba(3, 17, 27, .9)); box-shadow: 0 10px 40px rgba(0, 0, 0, .32), inset 0 1px rgba(172, 255, 242, .06); }
+  .texture-dashboard .frame-rail { display: none; }
+  .texture-dashboard .reading-panel,
+  .texture-dashboard .chart-box,
+  .texture-dashboard .update-row { border: 0; background: transparent; --aug-border-all: 0px; --aug-tl: 0px; --aug-tr: 0px; --aug-bl: 0px; --aug-br: 0px; }
+  .texture-dashboard .reading-panel { flex: 0 0 86px; min-height: 0; grid-template-columns: 43% 57%; }
+  .texture-dashboard .process-reading { padding: 8px 10px 5px 4px; }
+  .texture-dashboard .reading-label { font-size: 12px; font-weight: 400; letter-spacing: .07em; color: #a3bec6; }
+  .texture-dashboard .temperature { margin-top: 12px; }
+  .texture-dashboard .temperature span { color: #8bf3e1; font-size: clamp(42px, 3.6vw, 66px); font-weight: 500; letter-spacing: -.05em; text-shadow: 0 0 20px rgba(48, 228, 200, .18); }
+  .texture-dashboard .temperature small { margin-left: 7px; color: #badbdc; font-size: 17px; }
+  .texture-dashboard .ambient-readings { min-width: 0; margin: 3px 0 4px; padding: 0 0 0 12px; border-left-color: rgba(106, 163, 171, .25); }
+  .texture-dashboard .ambient-item { gap: 7px; padding: 0; }
+  .texture-dashboard .ambient-item + .ambient-item { border-top-color: rgba(92, 143, 157, .16); }
+  .texture-dashboard .ambient-item > div { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; flex: 1; min-width: 0; }
+  .texture-dashboard .hex-icon,
+  .texture-dashboard .battery-item .hex-icon { flex: 0 0 20px; width: 20px; height: 24px; background: none; filter: none; color: #69bbb8; }
+  .texture-dashboard .hex-icon::before { display: none; }
+  .texture-dashboard .metric-icon { width: 17px; height: 19px; filter: none; stroke-width: 1.6; }
+  .texture-dashboard .battery-item .battery-icon { width: 20px; height: 18px; }
+  .texture-dashboard .ambient-label { color: #92afb9; font-size: 11px; }
+  .texture-dashboard .ambient-value { margin: 0; font-size: 17px; font-weight: 500; color: #e1f2f1; }
+  .texture-dashboard .ambient-value small { font-size: 10px; color: #91b0b8; }
+  .texture-dashboard .battery-value { gap: 3px; }
+  .texture-dashboard .battery-value small { font-size: 9px; }
+  .texture-dashboard .update-row { flex: 0 0 29px; height: 29px; justify-content: flex-start; gap: 5px; padding-left: 4px; font-size: 10px; color: #809da9; border-bottom: 1px solid rgba(92, 143, 157, .18); }
+  .texture-dashboard .update-row time { margin-left: auto; color: #a9c5cc; font-size: 10px; }
+  .texture-dashboard .clock-icon { display: none; }
+  .texture-dashboard .chart-box { min-height: 0; flex: 1 1 0; margin-top: 8px; padding: 0; }
+  .texture-dashboard .chart-box h3 { margin: 0 0 6px; color: #9dbbc6; font-size: 11px; line-height: 17px; font-weight: 400; letter-spacing: .02em; }
+  .texture-dashboard .chart-box h3::before { height: 9px; width: 2px; background: #6acdbf; box-shadow: none; }
+  .texture-dashboard .chart-insights { gap: 4px; font-size: 10px; }
+  .texture-dashboard .chart-stat,
+  .texture-dashboard .chart-trend { padding: 2px 4px; border-color: rgba(96, 151, 162, .2); background: rgba(7, 31, 42, .6); }
+  .texture-dashboard .temperature-chart { min-height: 0; height: 0; flex: 1 1 0; }
+  .texture-dashboard .sensor-station.is-highlighted .station-frame { border-color: #80f9ed; box-shadow: 0 0 24px #24d7c322; }
+  .texture-dashboard .shaft-hotspot.is-highlighted .hotspot-tag { border-color: #c2fff5; }
+  .texture-dashboard.scene-expanded .shaft-stage { bottom: 44px; }
+  .texture-dashboard.scene-expanded .sensor-grid,
+  .texture-dashboard.scene-expanded .measurement-links { visibility: hidden; pointer-events: none; }
+}
+
+@media (min-width: 901px) and (max-width: 1150px) {
+  .texture-dashboard .sensor-grid { left: 24px; right: 24px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .texture-dashboard .dashboard-controls { right: 24px; top: 72px; }
+  .texture-dashboard .shaft-stage { top: 120px; }
+  .texture-dashboard .scene-caption { left: 24px; top: 12px; }
+  .texture-dashboard .ambient-item { gap: 3px; }
+  .texture-dashboard .temperature span { font-size: 44px; }
+  .texture-dashboard .ambient-value { font-size: 15px; }
+}
+
+@media (max-width: 900px) {
+  .texture-dashboard { padding: 8px 14px 44px; }
+  .texture-dashboard .hero-title { border: 0; filter: none; }
+  .texture-dashboard .hero-title::before,
+  .texture-dashboard .hero-title::after { display: none; }
+  .texture-dashboard .hero { height: 82px; }
+  .texture-dashboard .shaft-stage { position: relative; inset: auto; height: auto; aspect-ratio: 1672 / 941; margin: 0 -14px 18px; }
+  .twin-plane { top: 0; }
+  .twin-shade { background: linear-gradient(0deg, #030d17, transparent 24%, transparent 85%, #030d17); }
+  .scene-caption { top: 12px; left: 20px; gap: 4px; }
+  .scene-caption strong { font-size: 14px; }
+  .scene-kicker { font-size: 8px; }
+  .scene-note { font-size: 9px; }
+  .hotspot-tag { top: 21px; left: -25px; min-width: 80px; gap: 1px; padding: 4px 7px; }
+  .texture-dashboard .hotspot-name { font-size: 9px; }
+  .hotspot-reading { font-size: 14px; }
+  .texture-dashboard .sensor-grid { height: auto; min-height: 0; }
+  .texture-dashboard .station-frame { background: rgba(3, 22, 32, .94); }
+  .texture-dashboard .system-state { right: 18px; }
+  #sceneViewButton { display: none; }
+  .texture-dashboard .shaft-hotspot { position: absolute; }
+  .texture-dashboard .sensor-grid { gap: 18px; }
+  .texture-dashboard .sensor-station { min-height: 0; height: 360px; padding-top: 0; }
+  .texture-dashboard .station-cap { top: 0; left: 0; right: 0; height: 36px; padding: 8px 14px; text-align: left; background: #09272f; --aug-border-all: 0px; --aug-l: 0px; --aug-r: 0px; }
+  .texture-dashboard .station-cap h2 { margin: 0; font-size: 15px; letter-spacing: .04em; }
+  .texture-dashboard .station-frame { height: 100%; min-height: 0; padding: 46px 12px 12px; border: 1px solid #2c5159; --aug-border-all: 0px; --aug-inlay-all: 0px; --aug-tl: 0px; --aug-tr: 0px; --aug-bl: 0px; --aug-br: 0px; }
+  .texture-dashboard .frame-rail { display: none; }
+  .texture-dashboard .reading-panel { flex: 0 0 96px; min-height: 0; grid-template-columns: 40% 60%; background: none; --aug-border-all: 0px; }
+  .texture-dashboard .process-reading { padding: 8px 4px; border: 0; }
+  .texture-dashboard .reading-label { font-size: 12px; }
+  .texture-dashboard .temperature { margin-top: 12px; }
+  .texture-dashboard .temperature span { font-size: 40px; color: #8bf3e1; text-shadow: none; }
+  .texture-dashboard .temperature small { font-size: 14px; }
+  .texture-dashboard .ambient-readings { margin: 0; padding: 0 0 0 8px; border-left: 1px solid #26434d; }
+  .texture-dashboard .ambient-item { gap: 5px; padding: 0; }
+  .texture-dashboard .ambient-item > div { flex: 1; display: flex; align-items: baseline; justify-content: space-between; gap: 3px; }
+  .texture-dashboard .ambient-label { font-size: 10px; white-space: nowrap; }
+  .texture-dashboard .ambient-value { margin: 0; font-size: 14px; white-space: nowrap; }
+  .texture-dashboard .ambient-value small { font-size: 9px; }
+  .texture-dashboard .hex-icon { flex: 0 0 16px; width: 16px; height: 20px; background: none; filter: none; }
+  .texture-dashboard .hex-icon::before { display: none; }
+  .texture-dashboard .metric-icon { width: 16px; height: 18px; filter: none; }
+  .texture-dashboard .battery-item .battery-icon { width: 17px; }
+  .texture-dashboard .update-row { flex: 0 0 28px; padding: 0; font-size: 10px; background: none; --aug-border-all: 0px; }
+  .texture-dashboard .update-row time { font-size: 10px; }
+  .texture-dashboard .clock-icon { display: none; }
+  .texture-dashboard .chart-box { flex: 1; min-height: 0; margin-top: 8px; padding: 0; background: none; --aug-border-all: 0px; }
+  .texture-dashboard .chart-box h3 { font-size: 10px; margin: 0 0 6px; }
+  .texture-dashboard .chart-insights { gap: 3px; font-size: 9px; flex-wrap: wrap; }
+  .texture-dashboard .chart-stat,
+  .texture-dashboard .chart-trend { padding: 2px 3px; }
+  .texture-dashboard .temperature-chart { height: 0; flex: 1; min-height: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twin-scan-light::before,
+  .texture-dashboard .hotspot-pulse { animation: none; }
+}
